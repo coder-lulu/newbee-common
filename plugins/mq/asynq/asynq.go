@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/suyuan32/simple-admin-common/config"
+	"github.com/coder-lulu/newbee-common/config"
 
 	"github.com/hibiken/asynq"
 	"github.com/zeromicro/go-zero/core/logx"

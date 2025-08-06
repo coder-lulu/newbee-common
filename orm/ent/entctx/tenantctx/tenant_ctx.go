@@ -18,7 +18,7 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/suyuan32/simple-admin-common/orm/ent/entenum"
+	"github.com/coder-lulu/newbee-common/orm/ent/entenum"
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/rest/enum"
 	"google.golang.org/grpc/metadata"

@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/suyuan32/simple-admin-common/config"
+	"github.com/coder-lulu/newbee-common/config"
 	"github.com/zeromicro/go-zero/core/errorx"
 	"github.com/zeromicro/go-zero/core/logx"
 	"google.golang.org/grpc/metadata"
