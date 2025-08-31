@@ -19,7 +19,7 @@ type mockQueryOld struct{}
 // BenchmarkInterfaceBasedInterception 基准测试：接口断言方案
 func BenchmarkInterfaceBasedInterception(b *testing.B) {
 	query := &mockQuery{}
-	
+
 	// 模拟接口断言检查
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -35,7 +35,7 @@ func BenchmarkInterfaceBasedInterception(b *testing.B) {
 // BenchmarkReflectionBasedInterception 基准测试：反射方案（旧方案）
 func BenchmarkReflectionBasedInterception(b *testing.B) {
 	query := &mockQueryOld{}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		// 反射操作 - 旧方案的核心操作
@@ -57,7 +57,7 @@ func BenchmarkEndToEndComparison(b *testing.B) {
 			simulateInterfaceBasedFlow()
 		}
 	})
-	
+
 	b.Run("ReflectionBased", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			simulateReflectionBasedFlow()
@@ -71,7 +71,7 @@ func simulateInterfaceBasedFlow() {
 	type whereQuery interface {
 		Where(...func(*sql.Selector))
 	}
-	
+
 	if _, ok := ent.Query(query).(whereQuery); ok {
 		// 应用数据权限...
 	}

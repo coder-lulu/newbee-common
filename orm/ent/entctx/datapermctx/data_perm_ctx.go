@@ -40,6 +40,12 @@ const (
 
 	// FilterFieldKey is the key to store filter field
 	FilterFieldKey DataPermKey = "data-perm-filter-field"
+	
+	// UserIDKey is the key to store current user id
+	UserIDKey DataPermKey = "data-perm-user-id"
+	
+	// UserDeptKey is the key to store user's department id
+	UserDeptKey DataPermKey = "data-perm-user-dept"
 )
 
 // WithScopeContext returns context with data scope
@@ -204,4 +210,64 @@ func GetTenantRoleScopeDataPermRedisKey(roleCodes []string, tenantId uint64) str
 // GetTenantSubDeptDataPermRedisKey returns the key to store tenant's sub department data into redis
 func GetTenantSubDeptDataPermRedisKey(departmentId uint64, tenantId uint64) string {
 	return fmt.Sprintf("%s%d:DEPT:%d:SubDept", config.RedisDataPermissionPrefix, tenantId, departmentId)
+}
+
+// WithUserIDContext returns context with user id
+func WithUserIDContext(ctx context.Context, userID string) context.Context {
+	ctx = metadata.AppendToOutgoingContext(ctx, string(UserIDKey), userID)
+	ctx = context.WithValue(ctx, UserIDKey, userID)
+	return ctx
+}
+
+// GetUserIDFromCtx returns user id from context
+func GetUserIDFromCtx(ctx context.Context) (string, error) {
+	if userID, ok := ctx.Value(UserIDKey).(string); !ok {
+		if md, ok := metadata.FromIncomingContext(ctx); !ok {
+			logx.Error("failed to get user id from context", logx.Field("detail", ctx))
+			return "", errorx.NewInvalidArgumentError("failed to get user id")
+		} else {
+			if data := md.Get(string(UserIDKey)); len(data) > 0 {
+				return data[0], nil
+			} else {
+				return "", errorx.NewInvalidArgumentError("failed to get user id")
+			}
+		}
+	} else {
+		return userID, nil
+	}
+}
+
+// WithUserDeptContext returns context with user's department id
+func WithUserDeptContext(ctx context.Context, deptID uint64) context.Context {
+	deptIDStr := strconv.FormatUint(deptID, 10)
+	ctx = metadata.AppendToOutgoingContext(ctx, string(UserDeptKey), deptIDStr)
+	ctx = context.WithValue(ctx, UserDeptKey, deptIDStr)
+	return ctx
+}
+
+// GetUserDeptFromCtx returns user's department id from context
+func GetUserDeptFromCtx(ctx context.Context) (uint64, error) {
+	var deptIDStr string
+	var ok bool
+
+	if deptIDStr, ok = ctx.Value(UserDeptKey).(string); !ok {
+		if md, ok := metadata.FromIncomingContext(ctx); !ok {
+			logx.Error("failed to get user dept id from context", logx.Field("detail", ctx))
+			return 0, errorx.NewInvalidArgumentError("failed to get user dept id")
+		} else {
+			if data := md.Get(string(UserDeptKey)); len(data) > 0 {
+				deptIDStr = data[0]
+			} else {
+				return 0, errorx.NewInvalidArgumentError("failed to get user dept id")
+			}
+		}
+	}
+
+	deptID, err := strconv.ParseUint(deptIDStr, 10, 64)
+	if err != nil {
+		logx.Error("failed to convert user dept id", logx.Field("detail", err))
+		return 0, errorx.NewInvalidArgumentError("failed to get user dept id")
+	}
+	
+	return deptID, nil
 }

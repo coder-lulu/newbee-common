@@ -31,19 +31,21 @@ import (
 
 // DatabaseConf stores database configurations.
 type DatabaseConf struct {
-	Host         string `json:",env=DATABASE_HOST"`
-	Port         int    `json:",env=DATABASE_PORT"`
-	Username     string `json:",default=root,env=DATABASE_USERNAME"`
-	Password     string `json:",optional,env=DATABASE_PASSWORD"`
-	DBName       string `json:",default=simple_admin,env=DATABASE_DBNAME"`
-	SSLMode      string `json:",optional,env=DATABASE_SSL_MODE"`
-	Type         string `json:",default=mysql,options=[mysql,postgres,sqlite3],env=DATABASE_TYPE"`
-	MaxOpenConn  int    `json:",optional,default=100,env=DATABASE_MAX_OPEN_CONN"`
-	CacheTime    int    `json:",optional,default=10,env=DATABASE_CACHE_TIME"`
-	DBPath       string `json:",optional,env=DATABASE_DBPATH"`
-	MysqlConfig  string `json:",optional,env=DATABASE_MYSQL_CONFIG"`
-	PGConfig     string `json:",optional,env=DATABASE_PG_CONFIG"`
-	SqliteConfig string `json:",optional,env=DATABASE_SQLITE_CONFIG"`
+	Host            string `json:",env=DATABASE_HOST"`
+	Port            int    `json:",env=DATABASE_PORT"`
+	Username        string `json:",default=root,env=DATABASE_USERNAME"`
+	Password        string `json:",optional,env=DATABASE_PASSWORD"`
+	DBName          string `json:",default=simple_admin,env=DATABASE_DBNAME"`
+	SSLMode         string `json:",optional,env=DATABASE_SSL_MODE"`
+	Type            string `json:",default=mysql,options=[mysql,postgres,sqlite3],env=DATABASE_TYPE"`
+	MaxOpenConn     int    `json:",optional,default=100,env=DATABASE_MAX_OPEN_CONN"`
+	MaxIdleConn     int    `json:",optional,default=10,env=DATABASE_MAX_IDLE_CONN"`
+	ConnMaxLifetime int    `json:",optional,default=300,env=DATABASE_CONN_MAX_LIFETIME"`
+	CacheTime       int    `json:",optional,default=10,env=DATABASE_CACHE_TIME"`
+	DBPath          string `json:",optional,env=DATABASE_DBPATH"`
+	MysqlConfig     string `json:",optional,env=DATABASE_MYSQL_CONFIG"`
+	PGConfig        string `json:",optional,env=DATABASE_PG_CONFIG"`
+	SqliteConfig    string `json:",optional,env=DATABASE_SQLITE_CONFIG"`
 }
 
 // NewNoCacheDriver returns an Ent driver without cache.
@@ -51,11 +53,16 @@ func (c DatabaseConf) NewNoCacheDriver() *entsql.Driver {
 	db, err := sql.Open(c.Type, c.GetDSN())
 	logx.Must(err)
 
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	err = db.PingContext(ctx)
 	logx.Must(err)
 
+	// 优化数据库连接池配置以减少内存使用
 	db.SetMaxOpenConns(c.MaxOpenConn)
+	db.SetMaxIdleConns(c.MaxIdleConn)
+	db.SetConnMaxLifetime(time.Duration(c.ConnMaxLifetime) * time.Second)
+
 	driver := entsql.OpenDB(c.Type, db)
 
 	return driver

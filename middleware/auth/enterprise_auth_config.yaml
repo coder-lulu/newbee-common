@@ -1,0 +1,312 @@
+# 企业级多租户微服务认证架构配置示例
+# Enterprise Multi-Tenant Microservice Authentication Configuration
+
+# 服务基本信息
+service_name: "example-microservice"
+
+# 多租户认证配置
+multi_tenant_auth:
+  # 基础认证配置
+  jwt_secret: "${JWT_SECRET:your-super-secret-jwt-key-256-bits}"
+  enabled: true
+  skip_paths:
+    - "/health"
+    - "/metrics" 
+    - "/ping"
+    - "/favicon.ico"
+    - "/swagger"
+    - "/docs"
+
+  # 多租户特性
+  enable_multi_tenant: true
+  default_tenant_id: "default"
+  strict_tenant_isolation: true
+  cross_tenant_services:
+    - "system"
+    - "health" 
+    - "metrics"
+    - "gateway"
+    - "monitoring"
+
+  # 租户密钥配置
+  tenant_key_config:
+    rotation_hours: 24
+    key_length: 32
+    enable_cache: true
+    cache_ttl: 1800  # 30分钟
+    master_key: "${MASTER_KEY:}"
+
+# 服务间认证配置  
+service_auth:
+  service_name: "example-microservice"
+  service_secret: "${SERVICE_SECRET:service-secret-key}"
+  trusted_services:
+    - "core"
+    - "cmdb" 
+    - "gateway"
+    - "user-service"
+    - "order-service"
+  token_propagation: true
+  inter_service_auth: true
+  token_headers:
+    - "Authorization"
+    - "X-Auth-Token"
+  service_headers:
+    - "X-Service-Name"
+    - "X-Service-Secret"
+  timeout: "30s"
+  retry_attempts: 3
+  circuit_breaker: true
+
+# 权限验证配置
+permission:
+  enable_permission_check: true
+  cache_expiration: "30m"
+  batch_size: 100
+  super_admin_roles:
+    - "super_admin"
+    - "system_admin"
+    - "platform_admin"
+  default_permissions:
+    - "read"
+  enable_inheritance: true
+  enable_dynamic_permissions: true
+
+# 租户管理配置
+tenant_manager:
+  isolation_mode: "strict"  # none, soft, strict
+  cache_expiration: "1h"
+  refresh_interval: "5m"
+  enable_metrics: true
+  default_limits:
+    max_users: 1000
+    max_requests: 10000  # per hour
+    max_storage: 1073741824  # 1GB in bytes
+    rate_limits:
+      api: 100
+      upload: 10
+    feature_limits:
+      concurrent_connections: 50
+      file_upload_size: 10485760  # 10MB
+
+# Redis配置
+redis:
+  host: "${REDIS_HOST:localhost}"
+  port: 6379
+  password: "${REDIS_PASSWORD:}"
+  database: 0
+  pool_size: 10
+  max_retries: 3
+  min_idle_conns: 5
+  dial_timeout: "5s"
+  read_timeout: "3s"
+  write_timeout: "3s"
+  pool_timeout: "4s"
+  idle_timeout: "5m"
+
+# 监控配置
+monitoring:
+  enable_prometheus: true
+  metrics_path: "/metrics"
+  enable_healthz: true
+  healthz_path: "/healthz"
+  
+  # Prometheus指标配置
+  prometheus:
+    namespace: "auth"
+    subsystem: "middleware"
+    
+  # 性能监控
+  performance:
+    enable_detailed_metrics: true
+    collect_interval: "30s"
+    export_to_redis: true
+    redis_ttl: "24h"
+    
+  # 告警配置
+  alerts:
+    enable_alerts: true
+    error_rate_threshold: 0.05  # 5% error rate
+    response_time_threshold: "1s"
+    memory_usage_threshold: 512  # MB
+    goroutine_threshold: 1000
+
+# 日志配置
+logging:
+  level: "info"  # debug, info, warn, error
+  format: "json"  # json, text
+  enable_request_logging: true
+  enable_performance_logging: true
+  sensitive_fields:
+    - "password"
+    - "token"
+    - "secret"
+    - "key"
+
+# 安全配置
+security:
+  # Rate limiting
+  rate_limiting:
+    enabled: true
+    requests_per_second: 100
+    burst_size: 200
+    
+  # CORS配置
+  cors:
+    enabled: true
+    allowed_origins:
+      - "https://example.com"
+      - "https://admin.example.com"
+    allowed_methods:
+      - "GET"
+      - "POST"
+      - "PUT"  
+      - "DELETE"
+      - "OPTIONS"
+    allowed_headers:
+      - "Authorization"
+      - "Content-Type"
+      - "X-Tenant-ID"
+      - "X-User-ID"
+    expose_headers:
+      - "X-Rate-Limit-Remaining"
+      - "X-Response-Time"
+    allow_credentials: true
+    max_age: 86400  # 24 hours
+
+  # 安全头
+  security_headers:
+    enable_hsts: true
+    hsts_max_age: 31536000  # 1 year
+    enable_content_type_nosniff: true
+    enable_xss_protection: true
+    frame_options: "DENY"
+
+# 数据库配置（用于权限和租户数据存储）
+database:
+  type: "postgres"  # postgres, mysql, mongodb
+  host: "${DB_HOST:localhost}"
+  port: 5432
+  name: "${DB_NAME:auth_db}"
+  username: "${DB_USER:auth_user}"
+  password: "${DB_PASSWORD:auth_password}"
+  ssl_mode: "require"
+  max_open_conns: 25
+  max_idle_conns: 5
+  conn_max_lifetime: "1h"
+  
+  # 分表配置（大规模部署）
+  sharding:
+    enabled: false
+    shard_count: 4
+    shard_key: "tenant_id"
+
+# 缓存分层配置
+cache:
+  # L1缓存（内存）
+  l1_cache:
+    enabled: true
+    max_size: 1000
+    ttl: "5m"
+    cleanup_interval: "10m"
+    
+  # L2缓存（Redis）
+  l2_cache:
+    enabled: true
+    key_prefix: "auth:cache:"
+    ttl: "30m"
+    
+  # 缓存策略
+  strategy:
+    # 权限缓存策略
+    permission_cache_ttl: "15m"
+    # 用户缓存策略  
+    user_cache_ttl: "10m"
+    # 租户配置缓存策略
+    tenant_config_cache_ttl: "1h"
+
+# 集群配置
+cluster:
+  # 服务发现
+  discovery:
+    enabled: true
+    type: "consul"  # consul, etcd, k8s
+    endpoints:
+      - "consul:8500"
+    health_check_interval: "10s"
+    
+  # 负载均衡
+  load_balancer:
+    strategy: "tenant_aware"  # round_robin, tenant_aware, weighted
+    tenant_affinity: true
+    health_check_path: "/healthz"
+    
+  # 故障转移
+  failover:
+    max_retries: 3
+    retry_interval: "1s"
+    circuit_breaker: true
+    fallback_service: "fallback-auth"
+
+# 部署环境配置
+deployment:
+  environment: "${ENVIRONMENT:development}"  # development, staging, production
+  region: "${REGION:us-east-1}"
+  availability_zone: "${AZ:us-east-1a}"
+  
+  # 开发环境特殊配置
+  development:
+    enable_debug_endpoints: true
+    log_level: "debug"
+    disable_auth_for_paths:
+      - "/debug"
+      - "/dev"
+      
+  # 生产环境特殊配置
+  production:
+    enable_debug_endpoints: false
+    strict_validation: true
+    enable_audit_logging: true
+    
+# 运维配置
+operations:
+  # 优雅关闭
+  graceful_shutdown:
+    timeout: "30s"
+    
+  # 健康检查
+  health_check:
+    startup_probe:
+      initial_delay: "10s"
+      period: "5s"
+      timeout: "3s"
+      failure_threshold: 5
+    liveness_probe:
+      period: "10s" 
+      timeout: "3s"
+      failure_threshold: 3
+    readiness_probe:
+      period: "5s"
+      timeout: "3s"
+      failure_threshold: 3
+      
+  # 资源限制
+  resources:
+    memory_limit: "512Mi"
+    cpu_limit: "500m"
+    memory_request: "256Mi"
+    cpu_request: "250m"
+
+# 特性开关
+feature_flags:
+  # 实验性特性
+  enable_experimental_features: false
+  enable_beta_features: true
+  
+  # 特定特性开关
+  features:
+    advanced_caching: true
+    distributed_tracing: true
+    async_permission_validation: false
+    tenant_resource_quotas: true
+    dynamic_config_reload: true

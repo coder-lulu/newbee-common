@@ -1,0 +1,548 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "auth-middleware-perf",
+    "title": "认证中间件性能监控",
+    "tags": ["auth", "middleware", "performance"],
+    "timezone": "browser",
+    "schemaVersion": 30,
+    "version": 1,
+    "refresh": "10s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "type": "graph",
+        "title": "QPS (每秒请求数)",
+        "targets": [
+          {
+            "expr": "rate(middleware_auth_requests_total[1m])",
+            "legendFormat": "总请求",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(middleware_auth_success_total[1m])",
+            "legendFormat": "成功请求",
+            "refId": "B"
+          },
+          {
+            "expr": "rate(middleware_auth_failures_total[1m])",
+            "legendFormat": "失败请求",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "ops",
+            "label": "请求/秒",
+            "show": true
+          },
+          {
+            "show": false
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "type": "graph",
+        "title": "延迟分布",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(middleware_auth_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "P50",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.90, rate(middleware_auth_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "P90",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(middleware_auth_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "P95",
+            "refId": "C"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(middleware_auth_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "P99",
+            "refId": "D"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "ms",
+            "label": "延迟",
+            "show": true
+          },
+          {
+            "show": false
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 8},
+        "type": "stat",
+        "title": "缓存命中率",
+        "targets": [
+          {
+            "expr": "(rate(middleware_auth_cache_hits_total[5m]) / (rate(middleware_auth_cache_hits_total[5m]) + rate(middleware_auth_cache_misses_total[5m]))) * 100",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": ["lastNotNull"],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "text": {},
+          "textMode": "auto",
+          "colorMode": "background",
+          "graphMode": "area",
+          "justifyMode": "auto"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 80},
+                {"color": "green", "value": 90}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 8},
+        "type": "stat",
+        "title": "认证成功率",
+        "targets": [
+          {
+            "expr": "(rate(middleware_auth_success_total[5m]) / rate(middleware_auth_requests_total[5m])) * 100",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": ["lastNotNull"],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "text": {},
+          "textMode": "auto",
+          "colorMode": "background",
+          "graphMode": "area",
+          "justifyMode": "auto"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 95},
+                {"color": "green", "value": 99}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 8},
+        "type": "stat",
+        "title": "平均延迟",
+        "targets": [
+          {
+            "expr": "rate(middleware_auth_request_duration_seconds_sum[5m]) / rate(middleware_auth_request_duration_seconds_count[5m])",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": ["lastNotNull"],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "text": {},
+          "textMode": "auto",
+          "colorMode": "background",
+          "graphMode": "area",
+          "justifyMode": "auto"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 5},
+                {"color": "red", "value": 10}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 6,
+        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 8},
+        "type": "stat",
+        "title": "当前QPS",
+        "targets": [
+          {
+            "expr": "rate(middleware_auth_requests_total[1m])",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": ["lastNotNull"],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "auto",
+          "text": {},
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 10000},
+                {"color": "red", "value": 50000}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 7,
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+        "type": "graph",
+        "title": "内存使用",
+        "targets": [
+          {
+            "expr": "middleware_auth_memory_allocated_bytes",
+            "legendFormat": "已分配内存",
+            "refId": "A"
+          },
+          {
+            "expr": "middleware_auth_cache_size_bytes",
+            "legendFormat": "缓存大小",
+            "refId": "B"
+          },
+          {
+            "expr": "middleware_auth_object_pool_size_bytes",
+            "legendFormat": "对象池大小",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "bytes",
+            "label": "内存",
+            "show": true
+          },
+          {
+            "show": false
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+        "type": "graph",
+        "title": "缓存性能",
+        "targets": [
+          {
+            "expr": "rate(middleware_auth_cache_hits_total[1m])",
+            "legendFormat": "缓存命中",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(middleware_auth_cache_misses_total[1m])",
+            "legendFormat": "缓存未命中",
+            "refId": "B"
+          },
+          {
+            "expr": "rate(middleware_auth_cache_evictions_total[1m])",
+            "legendFormat": "缓存驱逐",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "ops",
+            "label": "操作/秒",
+            "show": true
+          },
+          {
+            "show": false
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+        "type": "heatmap",
+        "title": "延迟热力图",
+        "targets": [
+          {
+            "expr": "sum(rate(middleware_auth_request_duration_seconds_bucket[5m])) by (le)",
+            "format": "heatmap",
+            "legendFormat": "{{le}}",
+            "refId": "A"
+          }
+        ],
+        "dataFormat": "timeseries",
+        "options": {
+          "calculate": true,
+          "calculation": {
+            "xBuckets": {
+              "mode": "count",
+              "value": "30"
+            },
+            "yBuckets": {
+              "mode": "count",
+              "scale": {
+                "log": 2,
+                "type": "log"
+              }
+            }
+          },
+          "cellGap": 1,
+          "color": {
+            "exponent": 0.5,
+            "fill": "dark-orange",
+            "mode": "scheme",
+            "scale": "exponential",
+            "scheme": "Oranges",
+            "steps": 128
+          },
+          "exemplars": {
+            "color": "rgba(255,0,255,0.7)"
+          },
+          "filterValues": {
+            "le": 1e-9
+          },
+          "legend": {
+            "show": true
+          },
+          "rowsFrame": {
+            "layout": "auto"
+          },
+          "showValue": "never",
+          "tooltip": {
+            "show": true,
+            "yHistogram": true
+          },
+          "yAxis": {
+            "axisPlacement": "left",
+            "reverse": false,
+            "unit": "ms"
+          }
+        }
+      },
+      {
+        "id": 10,
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+        "type": "table",
+        "title": "Top 慢请求",
+        "targets": [
+          {
+            "expr": "topk(10, histogram_quantile(0.99, rate(middleware_auth_request_duration_seconds_bucket[5m])) by (path, method))",
+            "format": "table",
+            "instant": true,
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "showHeader": true
+        },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "align": "auto",
+              "displayMode": "auto"
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "Value"},
+              "properties": [
+                {
+                  "id": "unit",
+                  "value": "ms"
+                },
+                {
+                  "id": "custom.displayMode",
+                  "value": "gradient-gauge"
+                },
+                {
+                  "id": "thresholds",
+                  "value": {
+                    "mode": "absolute",
+                    "steps": [
+                      {"color": "green", "value": null},
+                      {"color": "yellow", "value": 10},
+                      {"color": "red", "value": 50}
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": 11,
+        "gridPos": {"h": 4, "w": 24, "x": 0, "y": 28},
+        "type": "row",
+        "title": "系统资源",
+        "collapsed": false
+      },
+      {
+        "id": 12,
+        "gridPos": {"h": 6, "w": 8, "x": 0, "y": 32},
+        "type": "graph",
+        "title": "CPU使用率",
+        "targets": [
+          {
+            "expr": "rate(process_cpu_seconds_total[1m]) * 100",
+            "legendFormat": "CPU使用率",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "percent",
+            "label": "CPU %",
+            "show": true
+          },
+          {
+            "show": false
+          }
+        ]
+      },
+      {
+        "id": 13,
+        "gridPos": {"h": 6, "w": 8, "x": 8, "y": 32},
+        "type": "graph",
+        "title": "Goroutines",
+        "targets": [
+          {
+            "expr": "go_goroutines",
+            "legendFormat": "Goroutines",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "short",
+            "label": "数量",
+            "show": true
+          },
+          {
+            "show": false
+          }
+        ]
+      },
+      {
+        "id": 14,
+        "gridPos": {"h": 6, "w": 8, "x": 16, "y": 32},
+        "type": "graph",
+        "title": "GC暂停时间",
+        "targets": [
+          {
+            "expr": "rate(go_gc_duration_seconds_sum[5m])",
+            "legendFormat": "GC暂停",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "ms",
+            "label": "暂停时间",
+            "show": true
+          },
+          {
+            "show": false
+          }
+        ]
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "instance",
+          "type": "query",
+          "datasource": "Prometheus",
+          "query": "label_values(middleware_auth_requests_total, instance)",
+          "refresh": 1,
+          "multi": true,
+          "includeAll": true,
+          "current": {
+            "selected": true,
+            "text": "All",
+            "value": "$__all"
+          }
+        },
+        {
+          "name": "interval",
+          "type": "interval",
+          "auto": true,
+          "auto_count": 30,
+          "auto_min": "10s",
+          "options": [
+            {"text": "1m", "value": "1m"},
+            {"text": "5m", "value": "5m"},
+            {"text": "10m", "value": "10m"},
+            {"text": "30m", "value": "30m"},
+            {"text": "1h", "value": "1h"}
+          ],
+          "current": {
+            "selected": false,
+            "text": "5m",
+            "value": "5m"
+          }
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "datasource": "Prometheus",
+          "enable": true,
+          "expr": "ALERTS{component=\"auth_middleware\"}",
+          "iconColor": "red",
+          "name": "认证中间件告警",
+          "step": "60s",
+          "tagKeys": "severity",
+          "titleFormat": "{{ alertname }}",
+          "textFormat": "{{ description }}"
+        }
+      ]
+    }
+  }
+}

@@ -18,9 +18,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/coder-lulu/newbee-common/config"
 	"github.com/mojocn/base64Captcha"
 	"github.com/redis/go-redis/v9"
-	"github.com/coder-lulu/newbee-common/config"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 

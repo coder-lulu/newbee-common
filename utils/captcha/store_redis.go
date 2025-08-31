@@ -18,8 +18,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/mojocn/base64Captcha"
 	"github.com/coder-lulu/newbee-common/config"
+	"github.com/mojocn/base64Captcha"
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/stores/redis"
 )

@@ -1,0 +1,356 @@
+# 自适应认证中间件配置文件
+# Adaptive Authentication Middleware Configuration
+
+# 基础认证配置
+auth:
+  jwt_secret: "your-super-secret-jwt-key-change-this-in-production"
+  enabled: true
+  skip_paths:
+    - "/health"
+    - "/metrics"
+    - "/ping"
+    - "/login"
+    - "/register"
+    - "/docs"
+    - "/swagger"
+
+# 系统资源监控配置
+monitoring:
+  sample_interval: "10s"
+  history_window_size: 120
+  cpu_threshold: 75.0
+  memory_threshold: 80.0
+  latency_threshold: "150ms"
+  load_threshold: 6.4
+  ping_targets:
+    - "8.8.8.8"
+    - "1.1.1.1"
+  ping_timeout: "3s"
+  enable_cpu_monitor: true
+  enable_memory_monitor: true
+  enable_network_monitor: true
+  enable_load_monitor: true
+  enable_disk_monitor: false
+
+# 自适应缓存配置
+cache:
+  initial_size: 2000
+  max_size: 20000
+  min_size: 200
+  default_ttl: "15m"
+  adaptation_interval: "3m"
+  hit_rate_threshold: 0.85
+  memory_threshold: 0.85
+  load_threshold: 0.8
+  enable_l1_cache: true
+  enable_l2_cache: true
+  l1_l2_ratio: 0.3
+  enable_compression: true
+  compression_threshold: 1024
+  enable_prefetch: true
+  prefetch_ratio: 0.15
+  eviction_policy: "ADAPTIVE"
+  eviction_batch_size: 100
+
+# 动态连接池配置
+connection_pool:
+  db:
+    initial_size: 15
+    min_size: 5
+    max_size: 100
+    max_idle_conns: 20
+    max_open_conns: 80
+    conn_max_lifetime: "1h"
+    conn_max_idle_time: "10m"
+    enable_health_check: true
+    health_check_interval: "30s"
+  redis:
+    initial_size: 8
+    min_size: 3
+    max_size: 50
+    pool_size: 30
+    min_idle_conns: 3
+    max_idle_conns: 15
+    conn_max_lifetime: "1h"
+    idle_timeout: "10m"
+    pool_timeout: "5s"
+    enable_pipeline: true
+    pipeline_size: 100
+  adjustment_interval: "5m"
+  monitoring_window: "15m"
+  utilization_threshold: 0.8
+  response_time_threshold: "100ms"
+  max_scale_up_factor: 2.0
+  max_scale_down_factor: 0.5
+  min_adjustment_gap: "2m"
+  enable_concurrency_based_scaling: true
+  concurrency_window: 100
+  concurrency_threshold: 0.75
+
+# 智能限流配置
+rate_limit:
+  global_rps: 2000.0
+  user_rps: 200.0
+  ip_rate_limit: 300.0
+  burst_size: 100
+  window_size: "1m"
+  enable_adaptive: true
+  adaptation_interval: "2m"
+  load_based_adjustment: true
+  behavior_based_adjustment: true
+  cpu_threshold: 80.0
+  memory_threshold: 85.0
+  error_rate_threshold: 5.0
+  latency_threshold: "200ms"
+  whitelist: []
+  blacklist: []
+  trusted_networks:
+    - "192.168.0.0/16"
+    - "10.0.0.0/8"
+    - "172.16.0.0/12"
+  enable_tiered_limiting: true
+  tier_configs:
+    premium:
+      rps: 400.0
+      burst_size: 200
+      window_size: "1m"
+      description: "Premium users"
+    standard:
+      rps: 200.0
+      burst_size: 100
+      window_size: "1m"
+      description: "Standard users"
+    basic:
+      rps: 100.0
+      burst_size: 50
+      window_size: "1m"
+      description: "Basic users"
+  enable_dynamic_penalty: true
+  penalty_multiplier: 0.5
+  penalty_duration: "5m"
+  max_penalty_factor: 0.1
+  enable_distributed: true
+  redis_key_prefix: "auth:ratelimit:"
+  sync_interval: "30s"
+
+# 服务降级配置
+degradation:
+  enable_degradation: true
+  check_interval: "45s"
+  recovery_interval: "2m"
+  grace_period: "1m"
+  cpu_thresholds:
+    level1: 75.0
+    level2: 85.0
+    level3: 92.0
+    level4: 97.0
+  memory_thresholds:
+    level1: 80.0
+    level2: 88.0
+    level3: 93.0
+    level4: 97.0
+  latency_thresholds:
+    level1: 200.0
+    level2: 500.0
+    level3: 1000.0
+    level4: 2000.0
+  error_rate_thresholds:
+    level1: 1.0
+    level2: 5.0
+    level3: 10.0
+    level4: 20.0
+  level_configs:
+    1: # Light degradation
+      description: "Light degradation - reduce cache size and tighten rate limits"
+      enabled_strategies:
+        - "cache_reduction"
+        - "rate_limit_tightening"
+      timeout: "30s"
+      fallback_enabled: true
+    2: # Moderate degradation
+      description: "Moderate degradation - reduce connections and disable non-essential features"
+      enabled_strategies:
+        - "cache_reduction"
+        - "rate_limit_tightening"
+        - "connection_reduction"
+      timeout: "20s"
+      fallback_enabled: true
+    3: # Severe degradation
+      description: "Severe degradation - minimal service with basic functionality only"
+      enabled_strategies:
+        - "cache_minimal"
+        - "rate_limit_strict"
+        - "connection_minimal"
+        - "feature_disable"
+      timeout: "10s"
+      fallback_enabled: true
+    4: # Critical degradation
+      description: "Critical degradation - emergency mode with core functions only"
+      enabled_strategies:
+        - "emergency_mode"
+      timeout: "5s"
+      fallback_enabled: true
+  strategy_configs:
+    cache_reduction:
+      name: "Cache Size Reduction"
+      type: "cache"
+      priority: 1
+      enabled: true
+      config:
+        reduction_factor: 0.5
+    rate_limit_tightening:
+      name: "Rate Limit Tightening"
+      type: "rate_limit"
+      priority: 2
+      enabled: true
+      config:
+        reduction_factor: 0.7
+    connection_reduction:
+      name: "Connection Pool Reduction"
+      type: "connection"
+      priority: 3
+      enabled: true
+      config:
+        reduction_factor: 0.6
+  min_service_level: 1
+  max_degradation_time: "30m"
+  enable_fallback: true
+  fallback_timeout: "5s"
+  enable_distributed: true
+  coordination_key: "auth:degradation:coordination"
+  leader_election: true
+  sync_interval: "10s"
+
+# 预测性扩缩容配置
+scaling:
+  enable_predictive_scaling: true
+  prediction_interval: "3m"
+  scaling_check_interval: "45s"
+  data_retention_period: "168h" # 7 days
+  prediction_horizon: "20m"
+  min_history_period: "90m"
+  accuracy_threshold: 0.75
+  confidence_threshold: 0.8
+  enable_seasonal_analysis: true
+  enable_trend_analysis: true
+  enable_anomaly_detection: true
+  seasonal_periods:
+    - "1h"
+    - "24h"
+    - "168h" # 1 week
+  scale_up_threshold: 0.8
+  scale_down_threshold: 0.3
+  max_scale_up_factor: 2.0
+  max_scale_down_factor: 0.5
+  scaling_cooldown: "5m"
+  preemptive_scaling: true
+  preemptive_threshold: 0.85
+  max_scale_operations: 10
+  safety_buffer: 0.1
+  enable_rollback: true
+  rollback_timeout: "2m"
+
+# 智能协调配置
+coordination:
+  enable_intelligent_coordination: true
+  coordination_interval: "30s"
+  decision_timeout: "8s"
+  conflict_resolution_strategy: "priority_based"
+  enable_global_optimization: true
+
+# 健康检查配置
+health_check:
+  enable_health_check: true
+  check_interval: "45s"
+  health_score_threshold: 70.0
+  component_weights:
+    auth: 0.35
+    cache: 0.25
+    rate_limit: 0.15
+    connections: 0.15
+    monitoring: 0.05
+    degradation: 0.03
+    scaling: 0.02
+  auto_recovery: true
+
+# 运营仪表板配置
+dashboard:
+  enable_dashboard: true
+  update_interval: "3s"
+  retention_period: "168h" # 7 days
+  enable_alerts: true
+  alert_thresholds:
+    error_rate: 3.0
+    response_time: 800.0
+    system_health: 65.0
+    resource_usage: 88.0
+    cache_hit_rate: 70.0
+    connection_pool: 85.0
+
+# 高级配置
+advanced:
+  # 机器学习配置
+  ml:
+    enable_ml_predictions: true
+    model_update_interval: "1h"
+    feature_window: "24h"
+    training_data_retention: "720h" # 30 days
+    
+  # 安全配置
+  security:
+    enable_security_monitoring: true
+    threat_detection: true
+    anomaly_detection_threshold: 0.95
+    security_event_retention: "168h"
+    
+  # 性能优化
+  performance:
+    enable_jit_optimization: true
+    memory_pool_size: "100MB"
+    gc_target_percentage: 75
+    max_goroutines: 10000
+    
+  # 日志配置
+  logging:
+    level: "info"
+    format: "json"
+    enable_structured_logs: true
+    log_sampling: true
+    log_sampling_rate: 0.1
+
+# 环境特定配置
+environment:
+  name: "production"
+  version: "1.0.0"
+  region: "us-west-2"
+  cluster_id: "auth-cluster-01"
+  
+# 外部服务配置
+external_services:
+  redis:
+    addr: "localhost:6379"
+    password: ""
+    db: 0
+    pool_size: 20
+    min_idle_conns: 5
+    max_retries: 3
+    idle_timeout: "5m"
+    
+  database:
+    driver: "mysql"
+    dsn: "user:password@tcp(localhost:3306)/auth_db?charset=utf8mb4&parseTime=True&loc=Local"
+    max_open_conns: 50
+    max_idle_conns: 10
+    conn_max_lifetime: "1h"
+    
+  monitoring:
+    prometheus:
+      enabled: true
+      port: 9090
+      path: "/metrics"
+    jaeger:
+      enabled: true
+      endpoint: "http://localhost:14268/api/traces"
+    grafana:
+      enabled: true
+      dashboard_url: "http://localhost:3000"

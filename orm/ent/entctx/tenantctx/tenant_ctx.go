@@ -26,7 +26,7 @@ import (
 
 type TenantKey string
 
-const TenantAdmin TenantKey = "tenant-admin"
+const PublicAccess TenantKey = "public-access"
 
 // GetTenantIDFromCtx returns tenant id from context.
 // If error occurs, return default tenant ID.
@@ -55,17 +55,16 @@ func GetTenantIDFromCtx(ctx context.Context) uint64 {
 	return uint64(id)
 }
 
-// GetTenantAdminCtx returns true when context including admin authority info.
-// If it returns true, the operation can be executed without tenant privacy layer.
-func GetTenantAdminCtx(ctx context.Context) bool {
+// GetPublicAccessCtx returns true when context is for public access only.
+func GetPublicAccessCtx(ctx context.Context) bool {
 	var policy string
 	var ok bool
 
-	if policy, ok = ctx.Value(TenantAdmin).(string); !ok {
+	if policy, ok = ctx.Value(PublicAccess).(string); !ok {
 		if md, ok := metadata.FromIncomingContext(ctx); !ok {
 			return false
 		} else {
-			if data := md.Get(string(TenantAdmin)); len(data) > 0 {
+			if data := md.Get(string(PublicAccess)); len(data) > 0 {
 				policy = data[0]
 			} else {
 				return false
@@ -80,8 +79,13 @@ func GetTenantAdminCtx(ctx context.Context) bool {
 	return false
 }
 
-// AdminCtx returns a context with admin authority info.
-func AdminCtx(ctx context.Context) context.Context {
-	ctx = metadata.AppendToOutgoingContext(ctx, string(TenantAdmin), "allow")
-	return context.WithValue(ctx, TenantAdmin, "allow")
+// PublicCtx returns a context for accessing public/shared data only.
+// This should only be used for:
+// - System-wide configuration data (OAuth providers, email templates)
+// - Public tenant information (name, status - no sensitive data)
+// - Global dictionaries (countries, currencies)
+// NEVER use for user data, business data, or any tenant-sensitive information.
+func PublicCtx(ctx context.Context) context.Context {
+	ctx = metadata.AppendToOutgoingContext(ctx, string(PublicAccess), "allow")
+	return context.WithValue(ctx, PublicAccess, "allow")
 }

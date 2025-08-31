@@ -1,0 +1,177 @@
+# 认证中间件性能告警规则
+
+groups:
+  - name: auth_middleware_performance
+    interval: 30s
+    rules:
+      # 高延迟告警
+      - alert: HighAuthLatency
+        expr: |
+          histogram_quantile(0.99, 
+            rate(middleware_auth_request_duration_seconds_bucket[5m])
+          ) > 0.01
+        for: 5m
+        labels:
+          severity: warning
+          component: auth_middleware
+        annotations:
+          summary: "认证中间件P99延迟过高"
+          description: "认证中间件的P99延迟超过10ms，当前值: {{ $value | humanizeDuration }}"
+
+      # 极高延迟告警
+      - alert: VeryHighAuthLatency
+        expr: |
+          histogram_quantile(0.99, 
+            rate(middleware_auth_request_duration_seconds_bucket[5m])
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          component: auth_middleware
+        annotations:
+          summary: "认证中间件P99延迟严重超标"
+          description: "认证中间件的P99延迟超过50ms，当前值: {{ $value | humanizeDuration }}"
+
+      # 低缓存命中率
+      - alert: LowCacheHitRate
+        expr: |
+          (
+            rate(middleware_auth_cache_hits_total[5m]) /
+            (rate(middleware_auth_cache_hits_total[5m]) + rate(middleware_auth_cache_misses_total[5m]))
+          ) < 0.8
+        for: 10m
+        labels:
+          severity: warning
+          component: auth_middleware
+        annotations:
+          summary: "认证缓存命中率过低"
+          description: "缓存命中率低于80%，当前值: {{ $value | humanizePercentage }}"
+
+      # 认证失败率过高
+      - alert: HighAuthFailureRate
+        expr: |
+          (
+            rate(middleware_auth_failures_total[5m]) /
+            rate(middleware_auth_requests_total[5m])
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: auth_middleware
+        annotations:
+          summary: "认证失败率过高"
+          description: "认证失败率超过5%，当前值: {{ $value | humanizePercentage }}"
+
+      # QPS异常
+      - alert: AbnormalQPS
+        expr: |
+          abs(
+            rate(middleware_auth_requests_total[5m]) - 
+            rate(middleware_auth_requests_total[5m] offset 1h)
+          ) / rate(middleware_auth_requests_total[5m] offset 1h) > 2
+        for: 5m
+        labels:
+          severity: info
+          component: auth_middleware
+        annotations:
+          summary: "QPS异常波动"
+          description: "QPS相比1小时前变化超过200%"
+
+      # 内存使用过高
+      - alert: HighMemoryUsage
+        expr: |
+          middleware_auth_memory_allocated_bytes > 1073741824
+        for: 10m
+        labels:
+          severity: warning
+          component: auth_middleware
+        annotations:
+          summary: "认证中间件内存使用过高"
+          description: "内存使用超过1GB，当前值: {{ $value | humanize1024 }}B"
+
+      # 缓存驱逐率过高
+      - alert: HighCacheEvictionRate
+        expr: |
+          rate(middleware_auth_cache_evictions_total[5m]) > 100
+        for: 5m
+        labels:
+          severity: info
+          component: auth_middleware
+        annotations:
+          summary: "缓存驱逐率过高"
+          description: "每秒缓存驱逐超过100次，可能需要增加缓存大小"
+
+      # JWT解析错误率
+      - alert: HighJWTParseErrorRate
+        expr: |
+          rate(middleware_auth_jwt_parse_errors_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: auth_middleware
+        annotations:
+          summary: "JWT解析错误率过高"
+          description: "每秒JWT解析错误超过10次"
+
+      # 并发请求数过高
+      - alert: HighConcurrentRequests
+        expr: |
+          middleware_auth_concurrent_requests > 1000
+        for: 5m
+        labels:
+          severity: warning
+          component: auth_middleware
+        annotations:
+          summary: "并发请求数过高"
+          description: "当前并发请求数: {{ $value }}"
+
+      # 对象池效率
+      - alert: LowObjectPoolEfficiency
+        expr: |
+          (
+            middleware_auth_object_pool_hits_total /
+            (middleware_auth_object_pool_hits_total + middleware_auth_object_pool_misses_total)
+          ) < 0.7
+        for: 10m
+        labels:
+          severity: info
+          component: auth_middleware
+        annotations:
+          summary: "对象池效率低"
+          description: "对象池命中率低于70%，当前值: {{ $value | humanizePercentage }}"
+
+  - name: auth_middleware_sla
+    interval: 1m
+    rules:
+      # SLA违反 - 可用性
+      - alert: SLAViolationAvailability
+        expr: |
+          (
+            1 - (
+              rate(middleware_auth_failures_total[10m]) /
+              rate(middleware_auth_requests_total[10m])
+            )
+          ) < 0.999
+        for: 10m
+        labels:
+          severity: critical
+          component: auth_middleware
+          sla: availability
+        annotations:
+          summary: "认证服务可用性SLA违反"
+          description: "可用性低于99.9%，当前值: {{ $value | humanizePercentage }}"
+
+      # SLA违反 - 延迟
+      - alert: SLAViolationLatency
+        expr: |
+          histogram_quantile(0.95,
+            rate(middleware_auth_request_duration_seconds_bucket[10m])
+          ) > 0.005
+        for: 10m
+        labels:
+          severity: critical
+          component: auth_middleware
+          sla: latency
+        annotations:
+          summary: "认证服务延迟SLA违反"
+          description: "P95延迟超过5ms，当前值: {{ $value | humanizeDuration }}"

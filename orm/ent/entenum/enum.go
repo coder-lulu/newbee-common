@@ -14,11 +14,19 @@
 
 package entenum
 
-const (
-	// TenantDefaultId is the default id of tenant
-	TenantDefaultId uint64 = 1
+import (
+	"context"
+	"github.com/coder-lulu/newbee-common/state"
 )
 
+// 向后兼容的常量定义，现在通过状态管理器获取
+var (
+	// TenantDefaultId is the default id of tenant
+	// 现在通过状态管理器动态获取，但保持变量名兼容
+	TenantDefaultId uint64 = 1 // 默认值，将被状态管理器覆盖
+)
+
+// 数据权限常量 - 保持向后兼容性
 const (
 	// DataPermAll is the data permission of all data
 	DataPermAll    = 1
@@ -36,7 +44,57 @@ const (
 	DataPermOwnDept    = 4
 	DataPermOwnDeptStr = "4"
 
-	// DataPermSelf is the data permission of your own data
-	DataPermSelf    = 5
-	DataPermSelfStr = "5"
+	// DataPermOwn is the data permission of your own data
+	DataPermOwn    = 5
+	DataPermOwnStr = "5"
+	
+	// Backward compatibility aliases
+	DataPermSelf    = DataPermOwn
+	DataPermSelfStr = DataPermOwnStr
 )
+
+// GetTenantDefaultId 动态获取默认租户ID
+// 优先从状态管理器获取，降级为静态常量
+func GetTenantDefaultId(ctx context.Context) uint64 {
+	// 尝试从状态管理器获取
+	if adapter := state.GetDefaultStateAdapter(); adapter != nil {
+		return adapter.GetDefaultTenantID(ctx)
+	}
+	
+	// 降级为静态常量
+	return TenantDefaultId
+}
+
+// GetDataPermScope 动态获取数据权限范围
+func GetDataPermScope(ctx context.Context, userID string) uint8 {
+	// 尝试从状态管理器获取
+	if adapter := state.GetDefaultStateAdapter(); adapter != nil {
+		return adapter.GetDataPermissionScope(ctx, userID)
+	}
+	
+	// 降级为最严格权限
+	return DataPermOwn
+}
+
+// 新增的便捷函数，保持API一致性
+func GetDataPermScopeString(scope uint8) string {
+	switch scope {
+	case DataPermAll:
+		return DataPermAllStr
+	case DataPermCustomDept:
+		return DataPermCustomDeptStr
+	case DataPermOwnDeptAndSub:
+		return DataPermOwnDeptAndSubStr
+	case DataPermOwnDept:
+		return DataPermOwnDeptStr
+	case DataPermOwn:
+		return DataPermOwnStr
+	default:
+		return DataPermOwnStr
+	}
+}
+
+// 初始化函数，在包加载时调用
+func init() {
+	// 可以在这里设置默认值，但实际值将通过状态管理器动态获取
+}

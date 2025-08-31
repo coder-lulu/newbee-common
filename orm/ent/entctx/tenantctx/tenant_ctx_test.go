@@ -23,7 +23,7 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-func TestGetTenantAdminCtx(t *testing.T) {
+func TestGetPublicAccessCtx(t *testing.T) {
 	type args struct {
 		ctx context.Context
 	}
@@ -33,44 +33,44 @@ func TestGetTenantAdminCtx(t *testing.T) {
 		want bool
 	}{
 		{
-			name: "test tenant admin context",
-			args: args{ctx: context.WithValue(context.Background(), TenantAdmin, "allow")},
+			name: "test public access context",
+			args: args{ctx: context.WithValue(context.Background(), PublicAccess, "allow")},
 			want: true,
 		},
 		{
-			name: "test tenant admin wrong context",
-			args: args{ctx: context.WithValue(context.Background(), TenantAdmin, "allowing")},
+			name: "test public access wrong context",
+			args: args{ctx: context.WithValue(context.Background(), PublicAccess, "allowing")},
 			want: false,
 		},
 		{
-			name: "test tenant empty context",
+			name: "test empty context",
 			args: args{ctx: context.Background()},
 			want: false,
 		},
 		{
-			name: "test tenant admin context function",
-			args: args{ctx: AdminCtx(context.Background())},
+			name: "test public access context function",
+			args: args{ctx: PublicCtx(context.Background())},
 			want: true,
 		},
 		{
 			name: "test meta context",
 			args: args{ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				string(TenantAdmin): "allow",
+				string(PublicAccess): "allow",
 			}))},
 			want: true,
 		},
 		{
 			name: "test meta deny context",
 			args: args{ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				string(TenantAdmin): "deny",
+				string(PublicAccess): "deny",
 			}))},
 			want: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := GetTenantAdminCtx(tt.args.ctx); got != tt.want {
-				t.Errorf("GetTenantAdminCtx() = %v, want %v", got, tt.want)
+			if got := GetPublicAccessCtx(tt.args.ctx); got != tt.want {
+				t.Errorf("GetPublicAccessCtx() = %v, want %v", got, tt.want)
 			}
 		})
 	}
