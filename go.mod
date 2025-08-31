@@ -9,7 +9,7 @@ replace github.com/zeromicro/go-zero v1.8.5 => github.com/suyuan32/simple-admin-
 require (
 	entgo.io/ent v0.14.5
 	github.com/apache/rocketmq-client-go/v2 v2.1.2
-	github.com/casbin/casbin/v2 v2.115.0
+	github.com/casbin/casbin/v2 v2.121.0
 	github.com/casbin/ent-adapter v1.0.0
 	github.com/casbin/redis-watcher/v2 v2.5.0
 	github.com/cespare/xxhash/v2 v2.3.0
