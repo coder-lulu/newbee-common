@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/coder-lulu/newbee-common/config"
+	"github.com/coder-lulu/newbee-common/middleware/keys"
 	"github.com/zeromicro/go-zero/core/errorx"
 	"github.com/zeromicro/go-zero/core/logx"
 	"google.golang.org/grpc/metadata"
@@ -40,10 +41,10 @@ const (
 
 	// FilterFieldKey is the key to store filter field
 	FilterFieldKey DataPermKey = "data-perm-filter-field"
-	
+
 	// UserIDKey is the key to store current user id
 	UserIDKey DataPermKey = "data-perm-user-id"
-	
+
 	// UserDeptKey is the key to store user's department id
 	UserDeptKey DataPermKey = "data-perm-user-dept"
 )
@@ -221,20 +222,41 @@ func WithUserIDContext(ctx context.Context, userID string) context.Context {
 
 // GetUserIDFromCtx returns user id from context
 func GetUserIDFromCtx(ctx context.Context) (string, error) {
-	if userID, ok := ctx.Value(UserIDKey).(string); !ok {
-		if md, ok := metadata.FromIncomingContext(ctx); !ok {
-			logx.Error("failed to get user id from context", logx.Field("detail", ctx))
-			return "", errorx.NewInvalidArgumentError("failed to get user id")
-		} else {
-			if data := md.Get(string(UserIDKey)); len(data) > 0 {
-				return data[0], nil
-			} else {
-				return "", errorx.NewInvalidArgumentError("failed to get user id")
+	var userID string
+	var found bool
+
+	// 首先尝试从数据权限专用的key获取
+	if userIDVal, ok := ctx.Value(UserIDKey).(string); ok && userIDVal != "" {
+		userID = userIDVal
+		found = true
+	}
+
+	// 如果没有找到，尝试从通用的userId key获取
+	if !found {
+		if userIDVal := ctx.Value("userId"); userIDVal != nil {
+			if userIDStr, ok := userIDVal.(string); ok && userIDStr != "" {
+				userID = userIDStr
+				found = true
 			}
 		}
-	} else {
-		return userID, nil
 	}
+
+	// 最后尝试从metadata获取
+	if !found {
+		if md, ok := metadata.FromIncomingContext(ctx); ok {
+			if data := md.Get(string(UserIDKey)); len(data) > 0 && data[0] != "" {
+				userID = data[0]
+				found = true
+			}
+		}
+	}
+
+	if !found || userID == "" {
+		logx.Error("failed to get user id from context", logx.Field("detail", ctx))
+		return "", errorx.NewInvalidArgumentError("failed to get user id")
+	}
+
+	return userID, nil
 }
 
 // WithUserDeptContext returns context with user's department id
@@ -248,26 +270,56 @@ func WithUserDeptContext(ctx context.Context, deptID uint64) context.Context {
 // GetUserDeptFromCtx returns user's department id from context
 func GetUserDeptFromCtx(ctx context.Context) (uint64, error) {
 	var deptIDStr string
-	var ok bool
+	var found bool
 
-	if deptIDStr, ok = ctx.Value(UserDeptKey).(string); !ok {
-		if md, ok := metadata.FromIncomingContext(ctx); !ok {
-			logx.Error("failed to get user dept id from context", logx.Field("detail", ctx))
-			return 0, errorx.NewInvalidArgumentError("failed to get user dept id")
-		} else {
-			if data := md.Get(string(UserDeptKey)); len(data) > 0 {
-				deptIDStr = data[0]
-			} else {
-				return 0, errorx.NewInvalidArgumentError("failed to get user dept id")
+	// 首先尝试从数据权限专用的key获取
+	if deptIDVal, ok := ctx.Value(UserDeptKey).(string); ok && deptIDVal != "" {
+		deptIDStr = deptIDVal
+		found = true
+	}
+
+	// 如果没有找到，尝试从通用的deptId key获取
+	if !found {
+		if deptValue := ctx.Value(keys.DeptIDKey); deptValue != nil {
+			switch v := deptValue.(type) {
+			case float64:
+				deptIDStr = strconv.FormatFloat(v, 'f', 0, 64)
+				found = true
+			case int:
+				deptIDStr = strconv.Itoa(v)
+				found = true
+			case uint64:
+				deptIDStr = strconv.FormatUint(v, 10)
+				found = true
+			case string:
+				if v != "" {
+					deptIDStr = v
+					found = true
+				}
 			}
 		}
 	}
 
-	deptID, err := strconv.ParseUint(deptIDStr, 10, 64)
-	if err != nil {
-		logx.Error("failed to convert user dept id", logx.Field("detail", err))
+	// 最后尝试从metadata获取
+	if !found {
+		if md, ok := metadata.FromIncomingContext(ctx); ok {
+			if data := md.Get(string(UserDeptKey)); len(data) > 0 && data[0] != "" {
+				deptIDStr = data[0]
+				found = true
+			}
+		}
+	}
+
+	if !found || deptIDStr == "" {
+		logx.Error("failed to get user dept id from context", logx.Field("detail", ctx))
 		return 0, errorx.NewInvalidArgumentError("failed to get user dept id")
 	}
-	
+
+	deptID, err := strconv.ParseUint(deptIDStr, 10, 64)
+	if err != nil {
+		logx.Error("failed to convert user dept id", logx.Field("detail", err), logx.Field("deptIDStr", deptIDStr))
+		return 0, errorx.NewInvalidArgumentError("failed to get user dept id")
+	}
+
 	return deptID, nil
 }

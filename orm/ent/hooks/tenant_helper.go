@@ -18,21 +18,24 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/coder-lulu/newbee-common/middleware/keys"
 	"github.com/coder-lulu/newbee-common/orm/ent/entctx/tenantctx"
-	"github.com/zeromicro/go-zero/rest/enum"
 	"google.golang.org/grpc/metadata"
 )
 
 // SetTenantIDToContext 将租户ID设置到context中
 // 这个函数用于在需要时手动设置租户上下文，通常用于系统级操作
+// 现在使用统一的keys包来确保一致性
 func SetTenantIDToContext(ctx context.Context, tenantID uint64) context.Context {
-	// 设置到HTTP context中
-	ctx = context.WithValue(ctx, "tenantId", tenantID)
-	ctx = context.WithValue(ctx, enum.TenantIdCtxKey, strconv.FormatUint(tenantID, 10))
+	tenantIDStr := strconv.FormatUint(tenantID, 10)
+	
+	// 使用统一的ContextManager进行设置
+	cm := keys.NewContextManager()
+	ctx = cm.SetTenantID(ctx, tenantIDStr)
 
-	// 设置到gRPC metadata中
+	// 设置到gRPC metadata中，使用统一的key
 	md := metadata.New(map[string]string{
-		enum.TenantIdCtxKey: strconv.FormatUint(tenantID, 10),
+		keys.TenantIDKey.String(): tenantIDStr,
 	})
 	ctx = metadata.NewOutgoingContext(ctx, md)
 

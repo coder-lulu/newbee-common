@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"strconv"
 
+	"github.com/coder-lulu/newbee-common/middleware/keys"
 	"github.com/zeromicro/go-zero/core/errorx"
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/rest/enum"
@@ -28,26 +29,52 @@ import (
 // GetDepartmentIDFromCtx returns department id from context.
 func GetDepartmentIDFromCtx(ctx context.Context) (uint64, error) {
 	var departmentId string
+	var found bool
 
-	if deptId, ok := ctx.Value("deptId").(json.Number); !ok {
+	// 尝试多种类型的部门ID获取
+	if deptValue := ctx.Value(keys.DeptIDKey); deptValue != nil {
+		switch v := deptValue.(type) {
+		case json.Number:
+			departmentId = v.String()
+			found = true
+		case float64:
+			departmentId = strconv.FormatFloat(v, 'f', 0, 64)
+			found = true
+		case int:
+			departmentId = strconv.Itoa(v)
+			found = true
+		case uint64:
+			departmentId = strconv.FormatUint(v, 10)
+			found = true
+		case string:
+			departmentId = v
+			found = true
+		}
+	}
+
+	if !found {
 		if md, ok := metadata.FromIncomingContext(ctx); !ok {
 			logx.Error("failed to get department id from context", logx.Field("detail", ctx))
 			return 0, errorx.NewInvalidArgumentError("failed to get department ID")
 		} else {
 			if data := md.Get(enum.DepartmentIdRpcCtxKey); len(data) > 0 {
 				departmentId = data[0]
+				found = true
 			} else {
 				return 0, errorx.NewInvalidArgumentError("failed to get department ID")
 			}
 		}
-	} else {
-		departmentId = deptId.String()
 	}
 
-	id, err := strconv.Atoi(departmentId)
-	if err != nil {
-		logx.Error("failed to convert department id", logx.Field("detail", err))
+	if !found || departmentId == "" {
+		logx.Error("department id not found or empty in context")
 		return 0, errorx.NewInvalidArgumentError("failed to get department ID")
 	}
-	return uint64(id), nil
+
+	id, err := strconv.ParseUint(departmentId, 10, 64)
+	if err != nil {
+		logx.Error("failed to convert department id", logx.Field("detail", err), logx.Field("departmentId", departmentId))
+		return 0, errorx.NewInvalidArgumentError("failed to get department ID")
+	}
+	return id, nil
 }

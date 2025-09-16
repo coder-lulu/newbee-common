@@ -23,14 +23,13 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
+	"github.com/coder-lulu/newbee-common/middleware/keys"
 	"github.com/coder-lulu/newbee-common/orm/ent/entctx/tenantctx"
 	"github.com/zeromicro/go-zero/core/logx"
-	"github.com/zeromicro/go-zero/rest/enum"
 	"google.golang.org/grpc/metadata"
 )
 
-// systemContextKey is the key for the system context.
-type systemContextKey struct{}
+// 注意：SystemContext 相关的键值现在使用统一的 keys 管理器
 
 // NewSystemContext returns a context that is flagged as a system context.
 // 注意：此函数应仅用于系统初始化和管理操作，使用时会记录审计日志
@@ -47,49 +46,95 @@ func NewSystemContext(ctx context.Context) context.Context {
 			logx.Field("action", "create_system_context"))
 	}
 
-	return context.WithValue(ctx, systemContextKey{}, true)
+	return context.WithValue(ctx, keys.SystemContextKey, true)
 }
 
 // isSystemContext checks if the context is a system context.
 func isSystemContext(ctx context.Context) bool {
-	val, ok := ctx.Value(systemContextKey{}).(bool)
-	return ok && val
+	// 首先检查上下文值
+	val, ok := ctx.Value(keys.SystemContextKey).(bool)
+	if ok && val {
+		return true
+	}
+	
+	// 检查 gRPC metadata 中的 SystemContext 标识
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		if data := md.Get(string(keys.SystemContextKey)); len(data) > 0 && data[0] == "true" {
+			return true
+		}
+	}
+	
+	return false
 }
 
 // fromContext returns the tenant ID from the context.
 func fromContext(ctx context.Context) (uint64, error) {
 	// 首先检查上下文是否真正包含有效的租户信息
-	// 而不是依赖可能返回默认值的GetTenantIDFromCtx
 	if !isValidTenantContext(ctx) {
 		return 0, errors.New("tenant id not found or invalid in context")
 	}
 
-	// 使用通用的租户上下文助手来获取租户ID
-	tenantID := tenantctx.GetTenantIDFromCtx(ctx)
+	// 优先检查旧版 uint64 格式（向后兼容）
+	if tenantID, ok := ctx.Value("tenantId").(uint64); ok {
+		return tenantID, nil
+	}
 
+	// 使用新版字符串格式的租户上下文助手
+	tenantID := tenantctx.GetTenantIDFromCtx(ctx)
 	return tenantID, nil
 }
 
 // isValidTenantContext checks if context contains valid tenant information
 func isValidTenantContext(ctx context.Context) bool {
 	// Check for uint64 tenant ID (as set by SetTenantIDToContext)
+	// Check for legacy uint64 tenantId format (backwards compatibility)
 	if _, ok := ctx.Value("tenantId").(uint64); ok {
 		return true
 	}
 
-	// Check for enum.TenantIdCtxKey string value
-	if _, ok := ctx.Value(enum.TenantIdCtxKey).(string); ok {
+	// Check for standard TenantIDKey string value
+	if _, ok := ctx.Value(keys.TenantIDKey).(string); ok {
 		return true
 	}
 
 	// Check gRPC metadata
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		if data := md.Get(enum.TenantIdCtxKey); len(data) > 0 {
+		if data := md.Get(string(keys.TenantIDKey)); len(data) > 0 {
 			return true
 		}
 	}
 
 	return false
+}
+
+// DiagnoseTenantContext 诊断租户上下文状态，用于调试
+func DiagnoseTenantContext(ctx context.Context) map[string]interface{} {
+	result := make(map[string]interface{})
+	
+	result["is_system_context"] = isSystemContext(ctx)
+	result["is_public_context"] = tenantctx.GetPublicAccessCtx(ctx)
+	result["has_uint64_tenant_id"] = ctx.Value("tenantId") != nil
+	result["has_string_tenant_id"] = ctx.Value(keys.TenantIDKey) != nil
+	result["is_valid_tenant_context"] = isValidTenantContext(ctx)
+	
+	// 尝试获取实际的租户ID值
+	if tenantID, ok := ctx.Value("tenantId").(uint64); ok {
+		result["uint64_tenant_id"] = tenantID
+	}
+	if tenantIDStr, ok := ctx.Value(keys.TenantIDKey).(string); ok {
+		result["string_tenant_id"] = tenantIDStr
+	}
+	
+	result["tenant_id_from_helper"] = tenantctx.GetTenantIDFromCtx(ctx)
+	
+	// 检查 gRPC metadata
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		if data := md.Get(string(keys.TenantIDKey)); len(data) > 0 {
+			result["grpc_metadata_tenant_id"] = data[0]
+		}
+	}
+	
+	return result
 }
 
 // TenantMutator is an interface that all tenant-scoped mutations implement.
@@ -177,17 +222,29 @@ func TenantQueryInterceptor() ent.Interceptor {
 		return ent.QuerierFunc(func(ctx context.Context, q ent.Query) (ent.Value, error) {
 			// 系统上下文跳过租户过滤
 			if isSystemContext(ctx) {
+				logx.WithContext(ctx).Debugw("SystemContext detected, bypassing tenant filter",
+					logx.Field("query_type", fmt.Sprintf("%T", q)))
 				return next.Query(ctx, q)
 			}
 
 			// 公共访问上下文跳过租户过滤 (用于访问共享数据)
 			if tenantctx.GetPublicAccessCtx(ctx) {
+				logx.WithContext(ctx).Debugw("PublicAccess context detected, bypassing tenant filter",
+					logx.Field("query_type", fmt.Sprintf("%T", q)))
 				return next.Query(ctx, q)
 			}
 
 			// 获取租户ID
 			tenantID, err := fromContext(ctx)
 			if err != nil {
+				// 添加详细的上下文诊断信息
+				logx.WithContext(ctx).Errorw("Failed to get tenant ID from context",
+					logx.Field("error", err.Error()),
+					logx.Field("query_type", fmt.Sprintf("%T", q)),
+					logx.Field("has_uint64_tenant_id", ctx.Value("tenantId") != nil),
+					logx.Field("has_string_tenant_id", ctx.Value(keys.TenantIDKey) != nil),
+					logx.Field("is_system_context", isSystemContext(ctx)),
+					logx.Field("is_public_context", tenantctx.GetPublicAccessCtx(ctx)))
 				return nil, err
 			}
 

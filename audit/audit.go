@@ -17,7 +17,9 @@ package audit
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"strings"
@@ -25,6 +27,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/coder-lulu/newbee-common/audit/filter"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
@@ -106,23 +109,39 @@ func isValidID(id string) bool {
 	return id != "" && len(id) <= 64 && !strings.ContainsAny(id, ";'\"\\<>(){}[]")
 }
 
-// AuditConfig 审计配置
+// AuditConfig 增强审计配置
 type AuditConfig struct {
-	Enabled    bool     `yaml:"enabled" json:"enabled"`
-	SkipPaths  []string `yaml:"skip_paths" json:"skip_paths"`
-	BufferSize int      `yaml:"buffer_size" json:"buffer_size"`
+	Enabled                 bool     `yaml:"enabled" json:"enabled"`
+	SkipPaths              []string `yaml:"skip_paths" json:"skip_paths"`
+	BufferSize             int      `yaml:"buffer_size" json:"buffer_size"`
+	
+	// 增强数据捕获配置
+	CaptureRequestData     bool     `yaml:"capture_request_data" json:"capture_request_data"`
+	CaptureResponseData    bool     `yaml:"capture_response_data" json:"capture_response_data"`
+	MaxRequestDataSize     int      `yaml:"max_request_data_size" json:"max_request_data_size"`
+	MaxResponseDataSize    int      `yaml:"max_response_data_size" json:"max_response_data_size"`
+	SensitiveFields        []string `yaml:"sensitive_fields" json:"sensitive_fields"`
+	EnableDataFiltering    bool     `yaml:"enable_data_filtering" json:"enable_data_filtering"`
 }
 
-// DefaultConfig 默认配置
+// DefaultConfig 默认配置 - 包含增强数据捕获
 func DefaultConfig() *AuditConfig {
 	return &AuditConfig{
-		Enabled:    true,
-		SkipPaths:  []string{"/health", "/metrics", "/ping"},
-		BufferSize: 1000,
+		Enabled:                true,
+		SkipPaths:             []string{"/health", "/metrics", "/ping"},
+		BufferSize:            1000,
+		
+		// 增强数据捕获默认配置
+		CaptureRequestData:    true,
+		CaptureResponseData:   false, // 默认不捕获响应，避免性能影响
+		MaxRequestDataSize:    2000,
+		MaxResponseDataSize:   2000,
+		SensitiveFields:       []string{"password", "passwd", "token", "secret", "key", "auth", "credential", "private", "confidential"},
+		EnableDataFiltering:   true,
 	}
 }
 
-// AuditEvent 审计事件
+// AuditEvent 增强审计事件 - 包含完整的请求/响应数据
 type AuditEvent struct {
 	Timestamp int64  `json:"timestamp"`
 	Method    string `json:"method"`
@@ -132,6 +151,13 @@ type AuditEvent struct {
 	IP        string `json:"ip"`
 	UserID    string `json:"user_id,omitempty"`
 	TenantID  string `json:"tenant_id,omitempty"`
+	
+	// 增强字段 - 请求/响应数据
+	UserAgent    string `json:"user_agent,omitempty"`
+	UserName     string `json:"user_name,omitempty"`
+	RequestData  string `json:"request_data,omitempty"`
+	ResponseData string `json:"response_data,omitempty"`
+	ResourceID   string `json:"resource_id,omitempty"`
 }
 
 // Reset 重置事件
@@ -145,20 +171,23 @@ type AuditStorage interface {
 	Close() error
 }
 
-// AuditMiddleware 审计中间件
+// AuditMiddleware 增强审计中间件
 type AuditMiddleware struct {
-	name      string
-	priority  int
-	enabled   bool
-	config    *AuditConfig
-	storage   AuditStorage
-	eventChan chan AuditEvent
-	skipPaths map[string]bool
-	stopChan  chan struct{}
-	wg        sync.WaitGroup
+	name             string
+	priority         int
+	enabled          bool
+	config           *AuditConfig
+	storage          AuditStorage
+	eventChan        chan AuditEvent
+	skipPaths        map[string]bool
+	stopChan         chan struct{}
+	wg               sync.WaitGroup
+	
+	// 增强功能
+	sensitiveFilter  *filter.SensitiveFilter
 }
 
-// New 创建审计中间件
+// New 创建增强审计中间件
 func New(config *AuditConfig, storage AuditStorage) *AuditMiddleware {
 	if config == nil {
 		config = DefaultConfig()
@@ -172,15 +201,30 @@ func New(config *AuditConfig, storage AuditStorage) *AuditMiddleware {
 		skipPaths[path] = true
 	}
 
+	// 初始化敏感数据过滤器
+	var sensitiveFilter *filter.SensitiveFilter
+	if config.EnableDataFiltering {
+		filterConfig := &filter.FilterConfig{
+			SensitiveFields: config.SensitiveFields,
+			MaskCharacter:   "***FILTERED***",
+		}
+		var err error
+		sensitiveFilter, err = filter.NewSensitiveFilter(filterConfig)
+		if err != nil {
+			logx.Errorw("Failed to create sensitive filter, data filtering disabled", logx.Field("error", err))
+		}
+	}
+
 	audit := &AuditMiddleware{
-		name:      "audit",
-		priority:  50,
-		enabled:   config.Enabled,
-		config:    config,
-		storage:   storage,
-		eventChan: make(chan AuditEvent, config.BufferSize),
-		skipPaths: skipPaths,
-		stopChan:  make(chan struct{}),
+		name:             "enhanced-audit",
+		priority:         50,
+		enabled:          config.Enabled,
+		config:           config,
+		storage:          storage,
+		eventChan:        make(chan AuditEvent, config.BufferSize),
+		skipPaths:        skipPaths,
+		stopChan:         make(chan struct{}),
+		sensitiveFilter:  sensitiveFilter,
 	}
 
 	if config.Enabled {
@@ -191,7 +235,7 @@ func New(config *AuditConfig, storage AuditStorage) *AuditMiddleware {
 	return audit
 }
 
-// Handle HTTP处理函数
+// Handle 增强 HTTP处理函数 - 支持完整数据捕获
 func (am *AuditMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !am.config.Enabled || am.skipPaths[r.URL.Path] {
@@ -200,36 +244,71 @@ func (am *AuditMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		startTime := time.Now()
-		wrapper := responseWriterPool.Get().(*AuditResponseWriter)
-		wrapper.ResponseWriter = w
-		wrapper.Reset()
-		defer responseWriterPool.Put(wrapper)
-
+		
+		// 捕获请求数据
+		requestData := ""
+		if am.config.CaptureRequestData {
+			requestData = am.captureRequestData(r)
+		}
+		
+		// 创建增强响应包装器
+		var wrapper *EnhancedResponseWriter
+		if am.config.CaptureResponseData {
+			wrapper = &EnhancedResponseWriter{
+				ResponseWriter: w,
+				body:          strings.Builder{},
+				status:        200,
+			}
+		} else {
+			// 使用基本响应包装器
+			basicWrapper := responseWriterPool.Get().(*AuditResponseWriter)
+			basicWrapper.ResponseWriter = w
+			basicWrapper.Reset()
+			defer responseWriterPool.Put(basicWrapper)
+			
+			next(basicWrapper, r)
+			
+			// 创建基本审计事件
+			event := AuditEvent{
+				Timestamp: startTime.Unix(),
+				Method:    r.Method,
+				Path:      r.URL.Path,
+				Status:    basicWrapper.GetStatusCode(),
+				Duration:  time.Since(startTime).Milliseconds(),
+				IP:        extractClientIP(r),
+				UserAgent: r.Header.Get("User-Agent"),
+				RequestData: requestData,
+			}
+			
+			am.fillUserInfo(&event, r.Context())
+			am.sendEvent(event)
+			return
+		}
+		
+		// 处理增强响应捕获
 		next(wrapper, r)
-
+		
+		// 捕获响应数据
+		responseData := ""
+		if am.config.CaptureResponseData && wrapper.body.Len() > 0 {
+			responseData = am.captureResponseData(wrapper.body.String())
+		}
+		
+		// 创建完整审计事件
 		event := AuditEvent{
-			Timestamp: startTime.Unix(),
-			Method:    r.Method,
-			Path:      r.URL.Path,
-			Status:    wrapper.GetStatusCode(),
-			Duration:  time.Since(startTime).Milliseconds(),
-			IP:        extractClientIP(r),
+			Timestamp:    startTime.Unix(),
+			Method:       r.Method,
+			Path:         r.URL.Path,
+			Status:       wrapper.status,
+			Duration:     time.Since(startTime).Milliseconds(),
+			IP:           extractClientIP(r),
+			UserAgent:    r.Header.Get("User-Agent"),
+			RequestData:  requestData,
+			ResponseData: responseData,
 		}
-
-		if ctx := r.Context(); ctx != nil {
-			if userID, ok := GetUserID(ctx); ok && isValidID(userID) {
-				event.UserID = userID
-			}
-			if tenantID, ok := GetTenantID(ctx); ok && isValidID(tenantID) {
-				event.TenantID = tenantID
-			}
-		}
-
-		select {
-		case am.eventChan <- event:
-		default:
-			atomic.AddInt64(&droppedEvents, 1)
-		}
+		
+		am.fillUserInfo(&event, r.Context())
+		am.sendEvent(event)
 	}
 }
 
@@ -370,3 +449,221 @@ func (w *AuditResponseWriter) GetStatusCode() int {
 	return w.statusCode
 }
 
+// ================== 增强功能实现 ==================
+
+// EnhancedResponseWriter 增强响应包装器 - 支持响应体捕获
+type EnhancedResponseWriter struct {
+	http.ResponseWriter
+	body   strings.Builder
+	status int
+}
+
+func (w *EnhancedResponseWriter) WriteHeader(status int) {
+	w.status = status
+	w.ResponseWriter.WriteHeader(status)
+}
+
+func (w *EnhancedResponseWriter) Write(data []byte) (int, error) {
+	// 捕获响应数据（有大小限制）
+	if w.body.Len() < 5000 { // 限制捕获的响应大小
+		w.body.Write(data)
+	}
+	return w.ResponseWriter.Write(data)
+}
+
+// fillUserInfo 填充用户信息到审计事件
+func (am *AuditMiddleware) fillUserInfo(event *AuditEvent, ctx context.Context) {
+	if ctx == nil {
+		return
+	}
+	
+	if userID, ok := GetUserID(ctx); ok && isValidID(userID) {
+		event.UserID = userID
+	}
+	if tenantID, ok := GetTenantID(ctx); ok && isValidID(tenantID) {
+		event.TenantID = tenantID
+	}
+	
+	// 提取用户名
+	if username, ok := am.extractUsername(ctx); ok {
+		event.UserName = username
+	}
+}
+
+// sendEvent 发送审计事件
+func (am *AuditMiddleware) sendEvent(event AuditEvent) {
+	select {
+	case am.eventChan <- event:
+	default:
+		atomic.AddInt64(&droppedEvents, 1)
+	}
+}
+
+// extractUsername 从上下文提取用户名
+func (am *AuditMiddleware) extractUsername(ctx context.Context) (string, bool) {
+	if username, ok := ctx.Value("username").(string); ok && username != "" {
+		return username, true
+	}
+	if username, ok := ctx.Value("userName").(string); ok && username != "" {
+		return username, true
+	}
+	if username, ok := ctx.Value("user_name").(string); ok && username != "" {
+		return username, true
+	}
+	return "", false
+}
+
+// captureRequestData 捕获请求数据
+func (am *AuditMiddleware) captureRequestData(r *http.Request) string {
+	data := make(map[string]interface{})
+	
+	// 捕获 GET 查询参数
+	if len(r.URL.RawQuery) > 0 {
+		data["query"] = r.URL.Query()
+	}
+	
+	// 捕获 POST/PUT/PATCH 请求体
+	if r.Method == "POST" || r.Method == "PUT" || r.Method == "PATCH" {
+		if strings.Contains(r.Header.Get("Content-Type"), "application/json") {
+			if r.Body != nil {
+				bodyBytes, err := io.ReadAll(r.Body)
+				if err == nil && len(bodyBytes) > 0 {
+					// 恢复 Body 供实际请求处理
+					r.Body = io.NopCloser(strings.NewReader(string(bodyBytes)))
+					
+					// 解析 JSON 并过滤敏感数据
+					var bodyData interface{}
+					if err := json.Unmarshal(bodyBytes, &bodyData); err == nil {
+						data["body"] = am.filterSensitiveData(bodyData)
+					} else {
+						// 如果不是有效的 JSON，存储为字符串
+						bodyStr := string(bodyBytes)
+						if len(bodyStr) > 1000 {
+							bodyStr = bodyStr[:1000] + "...(truncated)"
+						}
+						data["body"] = bodyStr
+					}
+				}
+			}
+		} else if strings.Contains(r.Header.Get("Content-Type"), "application/x-www-form-urlencoded") {
+			// 解析表单数据
+			if err := r.ParseForm(); err == nil {
+				formData := make(map[string]interface{})
+				for key, values := range r.PostForm {
+					if len(values) == 1 {
+						formData[key] = am.maskSensitiveField(key, values[0])
+					} else {
+						formData[key] = values
+					}
+				}
+				data["form"] = formData
+			}
+		}
+	}
+	
+	// 转换为 JSON 字符串
+	if len(data) == 0 {
+		return ""
+	}
+	
+	jsonBytes, err := json.Marshal(data)
+	if err != nil {
+		return fmt.Sprintf("Error marshaling request data: %v", err)
+	}
+	
+	result := string(jsonBytes)
+	if len(result) > am.config.MaxRequestDataSize {
+		result = result[:am.config.MaxRequestDataSize] + "...(truncated)"
+	}
+	
+	return result
+}
+
+// captureResponseData 捕获响应数据
+func (am *AuditMiddleware) captureResponseData(responseBody string) string {
+	if responseBody == "" {
+		return ""
+	}
+	
+	// 尝试解析为 JSON 并过滤敏感数据
+	var responseData interface{}
+	if err := json.Unmarshal([]byte(responseBody), &responseData); err == nil {
+		filteredData := am.filterSensitiveData(responseData)
+		if jsonBytes, err := json.Marshal(filteredData); err == nil {
+			result := string(jsonBytes)
+			if len(result) > am.config.MaxResponseDataSize {
+				result = result[:am.config.MaxResponseDataSize] + "...(truncated)"
+			}
+			return result
+		}
+	}
+	
+	// 如果不是 JSON，直接存储为截断字符串
+	if len(responseBody) > am.config.MaxResponseDataSize {
+		responseBody = responseBody[:am.config.MaxResponseDataSize] + "...(truncated)"
+	}
+	return responseBody
+}
+
+// filterSensitiveData 过滤敏感数据
+func (am *AuditMiddleware) filterSensitiveData(data interface{}) interface{} {
+	if !am.config.EnableDataFiltering || am.sensitiveFilter == nil {
+		return data
+	}
+	
+	switch v := data.(type) {
+	case map[string]interface{}:
+		filtered := make(map[string]interface{})
+		for key, value := range v {
+			if am.isSensitiveField(key) {
+				filtered[key] = "***FILTERED***"
+			} else {
+				filtered[key] = am.filterSensitiveData(value)
+			}
+		}
+		return filtered
+	case []interface{}:
+		filtered := make([]interface{}, len(v))
+		for i, item := range v {
+			filtered[i] = am.filterSensitiveData(item)
+		}
+		return filtered
+	default:
+		return v
+	}
+}
+
+// isSensitiveField 检查字段名是否包含敏感信息
+func (am *AuditMiddleware) isSensitiveField(fieldName string) bool {
+	fieldLower := strings.ToLower(fieldName)
+	for _, sensitive := range am.config.SensitiveFields {
+		if strings.Contains(fieldLower, strings.ToLower(sensitive)) {
+			return true
+		}
+	}
+	return false
+}
+
+// maskSensitiveField 遮蔽敏感字段值
+func (am *AuditMiddleware) maskSensitiveField(fieldName, value string) string {
+	if am.isSensitiveField(fieldName) {
+		return "***FILTERED***"
+	}
+	return value
+}
+
+// NewEnhancedConfig 创建增强配置 - 启用完整数据捕获
+func NewEnhancedConfig() *AuditConfig {
+	config := DefaultConfig()
+	config.CaptureRequestData = true
+	config.CaptureResponseData = true
+	return config
+}
+
+// NewBasicConfig 创建基础配置 - 只捕获请求数据
+func NewBasicConfig() *AuditConfig {
+	config := DefaultConfig()
+	config.CaptureRequestData = true
+	config.CaptureResponseData = false
+	return config
+}

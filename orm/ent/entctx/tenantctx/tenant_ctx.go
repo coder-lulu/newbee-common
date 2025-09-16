@@ -18,9 +18,9 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/coder-lulu/newbee-common/middleware/keys"
 	"github.com/coder-lulu/newbee-common/orm/ent/entenum"
 	"github.com/zeromicro/go-zero/core/logx"
-	"github.com/zeromicro/go-zero/rest/enum"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -30,16 +30,20 @@ const PublicAccess TenantKey = "public-access"
 
 // GetTenantIDFromCtx returns tenant id from context.
 // If error occurs, return default tenant ID.
+// 现在使用统一的keys包来确保一致性
 func GetTenantIDFromCtx(ctx context.Context) uint64 {
 	var tenantId string
 	var ok bool
 
-	if tenantId, ok = ctx.Value(enum.TenantIdCtxKey).(string); !ok {
+	// 首先尝试从context中获取，使用统一的key
+	if tenantId, ok = ctx.Value(keys.TenantIDKey).(string); !ok {
+		// 如果context中没有，尝试从gRPC metadata中获取
 		if md, ok := metadata.FromIncomingContext(ctx); !ok {
 			logx.Error("failed to get tenant id from context", logx.Field("detail", ctx))
 			return entenum.TenantDefaultId
 		} else {
-			if data := md.Get(enum.TenantIdCtxKey); len(data) > 0 {
+			// 使用统一的key从metadata中获取
+			if data := md.Get(keys.TenantIDKey.String()); len(data) > 0 {
 				tenantId = data[0]
 			} else {
 				return entenum.TenantDefaultId
