@@ -137,6 +137,15 @@ func (m *UnifiedHookManager) CreateMutationHook(fieldType FieldType) ent.Hook {
 				return next.Mutate(ctx, mutation)
 			}
 
+			// Shared hooks may target entities without an optional field. A partial
+			// or invalid field API must still fail rather than silently skip it.
+			mv := reflect.ValueOf(mutation)
+			if !config.RequireValue && !config.SecurityCritical &&
+				!mv.MethodByName(config.GetterMethod).IsValid() &&
+				!mv.MethodByName(config.SetterMethod).IsValid() {
+				return next.Mutate(ctx, mutation)
+			}
+
 			// 检查是否为系统上下文
 			if config.IsSystemContext != nil && config.IsSystemContext(ctx) {
 				logx.Debugw("System context detected, handling specially",
@@ -147,7 +156,9 @@ func (m *UnifiedHookManager) CreateMutationHook(fieldType FieldType) ent.Hook {
 				// 如果上下文中存在显式的租户/部门值，优先使用它
 				if mutation.Op().Is(ent.OpCreate) && config.ContextExtractor != nil {
 					if ctxValue, err := config.ContextExtractor(ctx); err == nil && ctxValue > 0 {
-						m.setFieldValue(mutation, config, ctxValue)
+						if err := m.setFieldValue(mutation, config, ctxValue); err != nil {
+							return nil, err
+						}
 						logx.Infow("System context: honoring explicit context value",
 							logx.Field("field_type", config.FieldType),
 							logx.Field("entity_type", entityType),
@@ -176,7 +187,9 @@ func (m *UnifiedHookManager) CreateMutationHook(fieldType FieldType) ent.Hook {
 								logx.Field("value", existingValue))
 						} else {
 							// 默认值，设置为0（系统级实体）
-							m.setFieldValue(mutation, config, 0)
+							if err := m.setFieldValue(mutation, config, 0); err != nil {
+								return nil, err
+							}
 							logx.Infow("System context: override default value to 0",
 								logx.Field("field_type", config.FieldType),
 								logx.Field("entity_type", entityType),
@@ -184,7 +197,9 @@ func (m *UnifiedHookManager) CreateMutationHook(fieldType FieldType) ent.Hook {
 						}
 					} else {
 						// 字段未设置，设置为0
-						m.setFieldValue(mutation, config, 0)
+						if err := m.setFieldValue(mutation, config, 0); err != nil {
+							return nil, err
+						}
 						logx.Infow("System context: set field to 0",
 							logx.Field("field_type", config.FieldType),
 							logx.Field("entity_type", entityType))
@@ -303,18 +318,8 @@ func (m *UnifiedHookManager) CreateQueryInterceptor(fieldType FieldType) ent.Int
 
 						// 添加一个永远不匹配的SQL条件，返回空结果
 						emptyModifier := func(s *sql.Selector) {
-							// 安全地获取表名
-							defer func() {
-								if r := recover(); r != nil {
-									logx.Debugw("Cannot get table name in empty modifier",
-										logx.Field("field_type", config.FieldType))
-								}
-							}()
-
-							tableName := s.TableName()
 							logx.Infow("🔒 Applying empty filter for security-critical field",
-								logx.Field("field_type", config.FieldType),
-								logx.Field("table", tableName))
+								logx.Field("field_type", config.FieldType))
 
 							// 使用 sql.False() 返回空结果
 							s.Where(sql.False())
@@ -323,6 +328,7 @@ func (m *UnifiedHookManager) CreateQueryInterceptor(fieldType FieldType) ent.Int
 						if success := tryAddModifierUnified(query, emptyModifier); !success {
 							logx.Errorw("Failed to add empty filter",
 								logx.Field("field_type", config.FieldType))
+							return nil, fmt.Errorf("%s: cannot install empty query filter", config.FieldType)
 						}
 
 						return next.Query(ctx, query)
@@ -342,7 +348,9 @@ func (m *UnifiedHookManager) CreateQueryInterceptor(fieldType FieldType) ent.Int
 				logx.Field("value", fieldValue))
 
 			// 添加SQL过滤器
-			m.addQueryFilter(query, config, fieldValue)
+			if !m.addQueryFilter(query, config, fieldValue) && (config.RequireValue || config.SecurityCritical) {
+				return nil, fmt.Errorf("%s: cannot install required query filter", config.FieldType)
+			}
 
 			return next.Query(ctx, query)
 		})
@@ -359,7 +367,7 @@ func (m *UnifiedHookManager) setFieldValue(mutation ent.Mutation, config *FieldC
 	}
 
 	// 检查方法签名
-	if setterMethod.Type().NumIn() != 1 || setterMethod.Type().In(0).Kind() != reflect.Uint64 {
+	if setterMethod.Type().NumIn() != 1 || setterMethod.Type().In(0) != reflect.TypeOf(value) || setterMethod.Type().NumOut() != 0 {
 		return fmt.Errorf("invalid setter method signature: expected func(uint64), got %s",
 			setterMethod.Type().String())
 	}
@@ -370,13 +378,16 @@ func (m *UnifiedHookManager) setFieldValue(mutation ent.Mutation, config *FieldC
 }
 
 // addQueryFilter 添加查询过滤器
-func (m *UnifiedHookManager) addQueryFilter(query ent.Query, config *FieldConfig, value uint64) {
+func (m *UnifiedHookManager) addQueryFilter(query ent.Query, config *FieldConfig, value uint64) bool {
 	// 创建SQL modifier
 	modifier := func(s *sql.Selector) {
 		// 安全地获取表名，避免panic
 		var tableName string
 		defer func() {
 			if r := recover(); r != nil {
+				if config.RequireValue || config.SecurityCritical {
+					s.Where(sql.False())
+				}
 				// 无法获取表名（如子查询），跳过过滤
 				logx.Debugw("Skip filter: cannot get table name (possibly subquery)",
 					logx.Field("field_type", config.FieldType),
@@ -417,29 +428,46 @@ func (m *UnifiedHookManager) addQueryFilter(query ent.Query, config *FieldConfig
 		logx.Errorw("Failed to add query filter",
 			logx.Field("field_type", config.FieldType),
 			logx.Field("query_type", fmt.Sprintf("%T", query)))
+		return false
 	}
+	return true
 }
 
 // tryAddModifierUnified 尝试通过反射添加modifier到查询
-func tryAddModifierUnified(q ent.Query, modifier func(*sql.Selector)) bool {
+func tryAddModifierUnified(q ent.Query, modifier func(*sql.Selector)) (success bool) {
+	defer func() {
+		if recover() != nil {
+			success = false
+		}
+	}()
 	v := reflect.ValueOf(q)
-	if v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
-
-	modifiersField := v.FieldByName("modifiers")
-	if !modifiersField.IsValid() || modifiersField.Kind() != reflect.Slice {
+	if !v.IsValid() || (v.Kind() == reflect.Ptr && v.IsNil()) {
 		return false
 	}
-
-	if !modifiersField.CanSet() {
-		modifiersField = reflect.NewAt(modifiersField.Type(),
-			unsafe.Pointer(modifiersField.UnsafeAddr())).Elem()
+	fields := reflect.Indirect(v)
+	modifierValue := reflect.ValueOf(modifier)
+	if fields.Kind() == reflect.Struct {
+		modifiersField := fields.FieldByName("modifiers")
+		if modifiersField.IsValid() && modifiersField.Kind() == reflect.Slice && modifiersField.CanAddr() &&
+			modifierValue.Type().AssignableTo(modifiersField.Type().Elem()) {
+			if !modifiersField.CanSet() {
+				modifiersField = reflect.NewAt(modifiersField.Type(), unsafe.Pointer(modifiersField.UnsafeAddr())).Elem()
+			}
+			modifiersField.Set(reflect.Append(modifiersField, modifierValue))
+			return true
+		}
 	}
 
-	newModifiers := reflect.Append(modifiersField, reflect.ValueOf(modifier))
-	modifiersField.Set(newModifiers)
-
+	// Ent queries generated without sql/modifier expose named predicates via Where.
+	where := v.MethodByName("Where")
+	if !where.IsValid() || !where.Type().IsVariadic() || where.Type().NumIn() != 1 {
+		return false
+	}
+	predicateType := where.Type().In(0).Elem()
+	if predicateType.Kind() != reflect.Func || !modifierValue.Type().ConvertibleTo(predicateType) {
+		return false
+	}
+	where.Call([]reflect.Value{modifierValue.Convert(predicateType)})
 	return true
 }
 
