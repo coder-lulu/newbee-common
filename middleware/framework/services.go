@@ -5,7 +5,7 @@ package framework
 import (
 	"context"
 
-	"github.com/coder-lulu/newbee-common/middleware/keys"
+	"github.com/coder-lulu/newbee-common/v2/middleware/keys"
 	"github.com/redis/go-redis/v9"
 )
 

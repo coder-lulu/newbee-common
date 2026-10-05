@@ -5,7 +5,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/coder-lulu/newbee-common/config"
+	"github.com/coder-lulu/newbee-common/v2/config"
 )
 
 func TestSetDynamicConfigurationToRedis(t *testing.T) {

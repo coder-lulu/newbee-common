@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/coder-lulu/newbee-common/utils/crypto"
+	"github.com/coder-lulu/newbee-common/v2/utils/crypto"
 )
 
 type encryptedResponseWriter struct {

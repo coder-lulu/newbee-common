@@ -18,11 +18,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/coder-lulu/newbee-common/middleware/errors"
-	"github.com/coder-lulu/newbee-common/middleware/framework"
-	"github.com/coder-lulu/newbee-common/middleware/keys"
-	"github.com/coder-lulu/newbee-common/middleware/logging"
-	"github.com/coder-lulu/newbee-common/middleware/util"
+	"github.com/coder-lulu/newbee-common/v2/middleware/errors"
+	"github.com/coder-lulu/newbee-common/v2/middleware/framework"
+	"github.com/coder-lulu/newbee-common/v2/middleware/keys"
+	"github.com/coder-lulu/newbee-common/v2/middleware/logging"
+	"github.com/coder-lulu/newbee-common/v2/middleware/util"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 

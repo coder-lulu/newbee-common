@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coder-lulu/newbee-common/middleware/cache"
-	"github.com/coder-lulu/newbee-common/middleware/framework"
+	"github.com/coder-lulu/newbee-common/v2/middleware/cache"
+	"github.com/coder-lulu/newbee-common/v2/middleware/framework"
 )
 
 // 监控管理器 - 统一管理所有监控组件

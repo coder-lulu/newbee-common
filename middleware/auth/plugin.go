@@ -10,12 +10,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coder-lulu/newbee-common/middleware/cache"
-	"github.com/coder-lulu/newbee-common/middleware/errors"
-	"github.com/coder-lulu/newbee-common/middleware/framework"
-	"github.com/coder-lulu/newbee-common/middleware/keys"
-	"github.com/coder-lulu/newbee-common/middleware/logging"
-	"github.com/coder-lulu/newbee-common/utils/jwt"
+	"github.com/coder-lulu/newbee-common/v2/middleware/cache"
+	"github.com/coder-lulu/newbee-common/v2/middleware/errors"
+	"github.com/coder-lulu/newbee-common/v2/middleware/framework"
+	"github.com/coder-lulu/newbee-common/v2/middleware/keys"
+	"github.com/coder-lulu/newbee-common/v2/middleware/logging"
+	"github.com/coder-lulu/newbee-common/v2/utils/jwt"
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc/metadata"
 )

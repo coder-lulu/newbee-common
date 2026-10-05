@@ -5,9 +5,9 @@ package encryption_test
 import (
 	"fmt"
 
-	"github.com/coder-lulu/newbee-common/middleware/framework"
-	"github.com/coder-lulu/newbee-common/middleware/integration"
-	"github.com/coder-lulu/newbee-common/utils/crypto"
+	"github.com/coder-lulu/newbee-common/v2/middleware/framework"
+	"github.com/coder-lulu/newbee-common/v2/middleware/integration"
+	"github.com/coder-lulu/newbee-common/v2/utils/crypto"
 	"github.com/redis/go-redis/v9"
 	"github.com/zeromicro/go-zero/rest"
 )

@@ -10,7 +10,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/coder-lulu/newbee-common/middleware/logging"
+	"github.com/coder-lulu/newbee-common/v2/middleware/logging"
 )
 
 // FieldMaskProcessor 字段掩码处理器 - 负责字段级权限控制和数据掩码

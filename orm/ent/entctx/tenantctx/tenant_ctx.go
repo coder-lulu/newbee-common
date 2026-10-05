@@ -18,7 +18,7 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/coder-lulu/newbee-common/middleware/keys"
+	"github.com/coder-lulu/newbee-common/v2/middleware/keys"
 	"github.com/zeromicro/go-zero/core/logx"
 	"google.golang.org/grpc/metadata"
 )

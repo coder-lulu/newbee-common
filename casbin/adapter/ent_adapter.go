@@ -23,8 +23,8 @@ import (
 	"github.com/casbin/casbin/v2/model"
 	"github.com/casbin/casbin/v2/persist"
 
-	"github.com/coder-lulu/newbee-common/casbin/types"
-	"github.com/coder-lulu/newbee-common/orm/ent/entctx/tenantctx"
+	"github.com/coder-lulu/newbee-common/v2/casbin/types"
+	"github.com/coder-lulu/newbee-common/v2/orm/ent/entctx/tenantctx"
 )
 
 // EntAdapter Casbin适配器，基于通用接口实现

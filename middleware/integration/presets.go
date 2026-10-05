@@ -2,7 +2,7 @@
 
 package integration
 
-import "github.com/coder-lulu/newbee-common/middleware/framework"
+import "github.com/coder-lulu/newbee-common/v2/middleware/framework"
 
 // ProductionPreset 生产环境预设配置
 func ProductionPreset(jwtSecret string) *framework.UnifiedConfig {

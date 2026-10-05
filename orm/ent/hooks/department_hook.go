@@ -19,7 +19,7 @@ import (
 	"reflect"
 
 	"entgo.io/ent"
-	"github.com/coder-lulu/newbee-common/orm/ent/entctx/deptctx"
+	"github.com/coder-lulu/newbee-common/v2/orm/ent/entctx/deptctx"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coder-lulu/newbee-common/middleware/framework"
+	"github.com/coder-lulu/newbee-common/v2/middleware/framework"
 )
 
 type stubAuditWriter struct {

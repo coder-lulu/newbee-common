@@ -5,8 +5,8 @@ package hooks
 import (
 	"context"
 
-	"github.com/coder-lulu/newbee-common/middleware/keys"
-	"github.com/coder-lulu/newbee-common/orm/ent/entctx/datapermctx"
+	"github.com/coder-lulu/newbee-common/v2/middleware/keys"
+	"github.com/coder-lulu/newbee-common/v2/orm/ent/entctx/datapermctx"
 	"github.com/zeromicro/go-zero/core/logx"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"

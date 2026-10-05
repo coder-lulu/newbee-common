@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coder-lulu/newbee-common/middleware/keys"
-	"github.com/coder-lulu/newbee-common/middleware/logging"
+	"github.com/coder-lulu/newbee-common/v2/middleware/keys"
+	"github.com/coder-lulu/newbee-common/v2/middleware/logging"
 	"github.com/redis/go-redis/v9"
 )
 

@@ -8,7 +8,7 @@ import (
 
 	"github.com/coder-lulu/newbee-core/rpc/ent"
 	tenant_ent "github.com/coder-lulu/newbee-core/rpc/ent/tenant"
-	"github.com/coder-lulu/newbee-common/orm/ent/hooks"
+	"github.com/coder-lulu/newbee-common/v2/orm/ent/hooks"
 	
 	"github.com/zeromicro/go-zero/core/logx"
 )

@@ -19,8 +19,8 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/coder-lulu/newbee-common/orm/ent/entctx/deptctx"
-	"github.com/coder-lulu/newbee-common/orm/ent/entenum"
+	"github.com/coder-lulu/newbee-common/v2/orm/ent/entctx/deptctx"
+	"github.com/coder-lulu/newbee-common/v2/orm/ent/entenum"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 

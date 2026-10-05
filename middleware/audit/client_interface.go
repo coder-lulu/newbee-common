@@ -5,7 +5,7 @@ package audit
 import (
 	"context"
 
-	"github.com/coder-lulu/newbee-common/middleware/framework"
+	"github.com/coder-lulu/newbee-common/v2/middleware/framework"
 )
 
 // AuditRPCClient 审计RPC客户端接口 - 消除反射调用的性能损耗

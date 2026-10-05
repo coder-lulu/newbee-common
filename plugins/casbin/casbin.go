@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/coder-lulu/newbee-common/config"
+	"github.com/coder-lulu/newbee-common/v2/config"
 
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"

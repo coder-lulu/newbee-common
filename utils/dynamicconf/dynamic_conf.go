@@ -21,7 +21,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/zeromicro/go-zero/core/logx"
 
-	"github.com/coder-lulu/newbee-common/config"
+	"github.com/coder-lulu/newbee-common/v2/config"
 )
 
 // SetDynamicConfigurationToRedis sets configuration data to redis

@@ -19,7 +19,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/coder-lulu/newbee-common/orm/ent/entenum"
+	"github.com/coder-lulu/newbee-common/v2/orm/ent/entenum"
 	"google.golang.org/grpc/metadata"
 )
 

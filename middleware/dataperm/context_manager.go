@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/coder-lulu/newbee-common/middleware/keys"
-	"github.com/coder-lulu/newbee-common/middleware/logging"
-	"github.com/coder-lulu/newbee-common/orm/ent/entctx/datapermctx"
-	"github.com/coder-lulu/newbee-common/orm/ent/entenum"
+	"github.com/coder-lulu/newbee-common/v2/middleware/keys"
+	"github.com/coder-lulu/newbee-common/v2/middleware/logging"
+	"github.com/coder-lulu/newbee-common/v2/orm/ent/entctx/datapermctx"
+	"github.com/coder-lulu/newbee-common/v2/orm/ent/entenum"
 )
 
 // EnhancedContextManager 增强的上下文管理器 - 负责在请求上下文中注入数据权限信息

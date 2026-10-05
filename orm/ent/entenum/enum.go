@@ -16,7 +16,7 @@ package entenum
 
 import (
 	"context"
-	"github.com/coder-lulu/newbee-common/state"
+	"github.com/coder-lulu/newbee-common/v2/state"
 )
 
 // 向后兼容的常量定义，现在通过状态管理器获取

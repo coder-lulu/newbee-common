@@ -29,8 +29,47 @@ go.work.sum
 .vscode/
 
 # Documentation (not committed to keep repo clean)
-docs/
 
 # OS files
 .DS_Store
 Thumbs.db
+
+# Local caches, diagnostics, credentials and build products
+/logs/
+**/logs/
+*.log
+.gocache/
+.gomodcache/
+.cache/
+.pnpm-store/
+node_modules/
+.turbo/
+.output/
+.nitro/
+dist/
+coverage/
+.claude/settings.local.json
+.trae/
+.env.local
+.env.*.local
+*_dev.yaml
+*.pem
+*.key
+*.p12
+*.pfx
+*.exe
+*.test
+*.prof
+*.out
+
+*.sql.gz
+
+*.db
+
+*.db-wal
+
+*.db-shm
+
+*.sqlite
+
+*.sqlite3

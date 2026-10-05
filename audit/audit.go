@@ -27,7 +27,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/coder-lulu/newbee-common/audit/filter"
+	"github.com/coder-lulu/newbee-common/v2/audit/filter"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 

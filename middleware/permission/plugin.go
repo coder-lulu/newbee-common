@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/casbin/casbin/v2"
-	"github.com/coder-lulu/newbee-common/middleware/errors"
-	"github.com/coder-lulu/newbee-common/middleware/framework"
-	"github.com/coder-lulu/newbee-common/middleware/logging"
+	"github.com/coder-lulu/newbee-common/v2/middleware/errors"
+	"github.com/coder-lulu/newbee-common/v2/middleware/framework"
+	"github.com/coder-lulu/newbee-common/v2/middleware/logging"
 )
 
 // EnforcerProvider provides a way for services to inject a Casbin enforcer

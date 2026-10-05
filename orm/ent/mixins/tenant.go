@@ -18,7 +18,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/mixin"
-	"github.com/coder-lulu/newbee-common/orm/ent/entenum"
+	"github.com/coder-lulu/newbee-common/v2/orm/ent/entenum"
 )
 
 // TenantMixin for embedding the tenant info in different schemas.

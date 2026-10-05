@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coder-lulu/newbee-common/middleware/cache"
-	"github.com/coder-lulu/newbee-common/middleware/errors"
-	"github.com/coder-lulu/newbee-common/middleware/framework"
-	"github.com/coder-lulu/newbee-common/middleware/logging"
+	"github.com/coder-lulu/newbee-common/v2/middleware/cache"
+	"github.com/coder-lulu/newbee-common/v2/middleware/errors"
+	"github.com/coder-lulu/newbee-common/v2/middleware/framework"
+	"github.com/coder-lulu/newbee-common/v2/middleware/logging"
 	"github.com/redis/go-redis/v9"
 )
 

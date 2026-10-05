@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/coder-lulu/newbee-common/middleware/framework"
-	"github.com/coder-lulu/newbee-common/utils/pointy"
+	"github.com/coder-lulu/newbee-common/v2/middleware/framework"
+	"github.com/coder-lulu/newbee-common/v2/utils/pointy"
 	"github.com/coder-lulu/newbee-core/rpc/types/core"
 	"github.com/zeromicro/go-zero/core/logx"
 )

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coder-lulu/newbee-common/middleware/logging"
+	"github.com/coder-lulu/newbee-common/v2/middleware/logging"
 )
 
 // DefaultCasbinProvider 默认的Casbin提供者实现

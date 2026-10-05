@@ -25,13 +25,12 @@ import (
 	"strings"
 
 	"github.com/nicksnyder/go-i18n/v2/i18n"
-	"github.com/zeromicro/go-zero/core/errorx"
 	"github.com/zeromicro/go-zero/core/logx"
 	"golang.org/x/text/language"
 	"google.golang.org/grpc/status"
 
-	"github.com/coder-lulu/newbee-common/utils/errcode"
-	"github.com/coder-lulu/newbee-common/utils/parse"
+	"github.com/coder-lulu/newbee-common/v2/utils/errcode"
+	"github.com/coder-lulu/newbee-common/v2/utils/parse"
 )
 
 //go:embed locale/*.json
@@ -108,20 +107,22 @@ func (l *Translator) TransError(ctx context.Context, err error) error {
 			message = err.Error()
 		}
 		return status.Error(status.Code(err), message)
-	} else if codeErr, ok := err.(*errorx.CodeError); ok {
-		message, e := l.MatchLocalizer(lang).LocalizeMessage(&i18n.Message{ID: codeErr.Error()})
+	} else if jsonErr, ok := err.(*JSONError); ok {
+		// 如果是JSONError类型，翻译消息
+		message, e := l.MatchLocalizer(lang).LocalizeMessage(&i18n.Message{ID: jsonErr.Message})
 		if e != nil || message == "" {
-			message = codeErr.Error()
+			message = jsonErr.Message
 		}
-		return errorx.NewCodeError(codeErr.Code, message)
-	} else if apiErr, ok := err.(*errorx.ApiError); ok {
-		message, e := l.MatchLocalizer(lang).LocalizeMessage(&i18n.Message{ID: apiErr.Error()})
-		if e != nil {
-			message = apiErr.Error()
+		return &JSONError{
+			Code:    jsonErr.Code,
+			Message: message,
 		}
-		return errorx.NewApiError(apiErr.Code, message)
 	} else {
-		return errorx.NewApiError(http.StatusInternalServerError, err.Error())
+		// 默认返回500错误
+		return &JSONError{
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		}
 	}
 }
 

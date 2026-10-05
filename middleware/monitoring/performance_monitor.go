@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coder-lulu/newbee-common/middleware/framework"
+	"github.com/coder-lulu/newbee-common/v2/middleware/framework"
 )
 
 // 性能监控器

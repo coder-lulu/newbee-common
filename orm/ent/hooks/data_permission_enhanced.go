@@ -21,8 +21,8 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 
-	"github.com/coder-lulu/newbee-common/orm/ent/entctx/datapermctx"
-	"github.com/coder-lulu/newbee-common/state"
+	"github.com/coder-lulu/newbee-common/v2/orm/ent/entctx/datapermctx"
+	"github.com/coder-lulu/newbee-common/v2/state"
 )
 
 // EnhancedDataPermissionConfig 增强的数据权限配置

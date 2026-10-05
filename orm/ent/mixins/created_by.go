@@ -31,6 +31,7 @@ func (CreatedByMixin) Fields() []ent.Field {
 	return []ent.Field{
 		field.UUID("created_by", uuid.UUID{}).
 			Optional().
+			Nillable().
 			Comment("Created user's UUID | 创建者 UUID"),
 	}
 }

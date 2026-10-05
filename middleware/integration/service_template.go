@@ -29,9 +29,9 @@ import (
 	"context"
 	"embed"
 
-	"github.com/coder-lulu/newbee-common/i18n"
-	"github.com/coder-lulu/newbee-common/middleware/integration"
-	"github.com/coder-lulu/newbee-common/middleware/keys"
+	"github.com/coder-lulu/newbee-common/v2/i18n"
+	"github.com/coder-lulu/newbee-common/v2/middleware/integration"
+	"github.com/coder-lulu/newbee-common/v2/middleware/keys"
 	"github.com/redis/go-redis/v9"
 	"github.com/zeromicro/go-zero/rest"
 	"github.com/zeromicro/go-zero/zrpc"
@@ -117,9 +117,9 @@ package svc
 import (
 	"context"
 
-	"github.com/coder-lulu/newbee-common/middleware/keys"
-	"github.com/coder-lulu/newbee-common/orm/ent"
-	"github.com/coder-lulu/newbee-common/orm/ent/hooks"
+	"github.com/coder-lulu/newbee-common/v2/middleware/keys"
+	"github.com/coder-lulu/newbee-common/v2/orm/ent"
+	"github.com/coder-lulu/newbee-common/v2/orm/ent/hooks"
 	"github.com/redis/go-redis/v9"
 
 	"` + t.ServiceName + `/internal/config"
@@ -200,7 +200,7 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/coder-lulu/newbee-common/middleware/integration"
+	"github.com/coder-lulu/newbee-common/v2/middleware/integration"
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/rest"
 

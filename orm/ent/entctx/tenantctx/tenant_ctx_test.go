@@ -18,8 +18,8 @@ import (
     "context"
     "testing"
 
-    "github.com/coder-lulu/newbee-common/orm/ent/entenum"
-    "github.com/coder-lulu/newbee-common/middleware/keys"
+    "github.com/coder-lulu/newbee-common/v2/orm/ent/entenum"
+    "github.com/coder-lulu/newbee-common/v2/middleware/keys"
     "google.golang.org/grpc/metadata"
 )
 

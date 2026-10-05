@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coder-lulu/newbee-common/middleware/cache"
+	"github.com/coder-lulu/newbee-common/v2/middleware/cache"
 )
 
 // 缓存监控器

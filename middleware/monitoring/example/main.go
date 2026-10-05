@@ -9,7 +9,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/coder-lulu/newbee-common/middleware/monitoring"
+	"github.com/coder-lulu/newbee-common/v2/middleware/monitoring"
 )
 
 func main() {
